@@ -1,0 +1,7 @@
+<drawables>
+    <bitmap id="LauncherIcon" filename="launcher_icon.png" />
+    <!-- Dog art is 400x400; scale it to about half the screen on every device. -->
+    <bitmap id="DogAwake" filename="dog_awake.png" scaleX="45%" scaleY="45%" scaleRelativeTo="screen" />
+    <bitmap id="DogHappy" filename="dog_happy.png" scaleX="45%" scaleY="45%" scaleRelativeTo="screen" />
+    <bitmap id="DogSleepy" filename="dog_sleepy.png" scaleX="45%" scaleY="45%" scaleRelativeTo="screen" />
+</drawables>
