@@ -33,13 +33,17 @@ class DogFaceView extends WatchUi.WatchFace {
 
     private const SLEEP_START_HOUR = 22;
     private const SLEEP_END_HOUR = 6;
-    private const DOG_SIZE = 220;
+    private const DOG_WIDTH = 234;
+    private const CLOCK_TOP = 0.125;
+    private const CLOCK_GAP = 6;
 
     private var _mood as Symbol?;
     private var _dog as BitmapResource?;
     private var _animation as AnimationLayer?;
     private var _dogX as Number = 0;
     private var _dogY as Number = 0;
+    private var _clockFont as FontResource?;
+    private var _clockY as Number = 0;
     private var _lowPower as Boolean = false;
     private var _burnInProtection as Boolean = false;
 
@@ -50,8 +54,12 @@ class DogFaceView extends WatchUi.WatchFace {
     }
 
     function onLayout(dc as Dc) as Void {
-        _dogX = (dc.getWidth() - DOG_SIZE) / 2;
-        _dogY = (dc.getHeight() * 0.34).toNumber();
+        var clockFont = WatchUi.loadResource(Rez.Fonts.ClockFont) as FontResource;
+        _clockFont = clockFont;
+        // The dog always starts just below the clock so the two never overlap
+        _clockY = (dc.getHeight() * CLOCK_TOP).toNumber();
+        _dogX = (dc.getWidth() - DOG_WIDTH) / 2;
+        _dogY = _clockY + dc.getFontHeight(clockFont) + CLOCK_GAP;
         setMood(currentMood(System.getClockTime(), ActivityMonitor.getInfo()));
     }
 
@@ -78,11 +86,20 @@ class DogFaceView extends WatchUi.WatchFace {
             setMood(mood);
         }
 
-        drawBattery(dc, width / 2, (height * 0.075).toNumber());
-
+        // Battery and date share the top row
+        var today = Gregorian.info(Time.now(), Time.FORMAT_MEDIUM);
+        var date = Lang.format("$1$ $2$", [today.day_of_week.toUpper(), today.day]);
+        var rowY = (height * 0.075).toNumber();
+        var dateWidth = dc.getTextWidthInPixels(date, Graphics.FONT_XTINY);
+        var rowLeft = width / 2 - (dateWidth + 38) / 2;
+        drawBattery(dc, rowLeft + 14, rowY);
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(width / 2, height * 0.215, Graphics.FONT_NUMBER_HOT, formatTime(clock),
-            Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+        dc.drawText(rowLeft + 38, rowY, Graphics.FONT_XTINY, date, Graphics.TEXT_JUSTIFY_LEFT | Graphics.TEXT_JUSTIFY_VCENTER);
+
+        var clockFont = _clockFont;
+        if (clockFont != null) {
+            dc.drawText(width / 2, _clockY, clockFont, formatTime(clock), Graphics.TEXT_JUSTIFY_CENTER);
+        }
 
         var dog = _dog;
         if (dog != null) {
@@ -99,10 +116,6 @@ class DogFaceView extends WatchUi.WatchFace {
         var steps = activity.steps != null ? activity.steps.toString() : "--";
         dc.drawText(leftX, statY, Graphics.FONT_XTINY, steps, Graphics.TEXT_JUSTIFY_CENTER);
         dc.drawText(rightX, statY, Graphics.FONT_XTINY, heartRate(), Graphics.TEXT_JUSTIFY_CENTER);
-
-        var today = Gregorian.info(Time.now(), Time.FORMAT_MEDIUM);
-        var date = Lang.format("$1$ $2$", [today.day_of_week.toUpper(), today.day]);
-        dc.drawText(width / 2, height * 0.875, Graphics.FONT_TINY, date, Graphics.TEXT_JUSTIFY_CENTER);
     }
 
     function onEnterSleep() as Void {

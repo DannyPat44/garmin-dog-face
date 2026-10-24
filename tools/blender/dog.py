@@ -24,13 +24,15 @@ FRAMES = 30
 FPS = 10
 
 # Coat colours, linear RGB
-BLACK = (0.008, 0.007, 0.007)
-TAN = (0.36, 0.15, 0.05)
-WHITE = (0.78, 0.74, 0.68)
+BLACK = (0.012, 0.010, 0.011)
+TAN = (0.30, 0.125, 0.045)
+WHITE = (0.86, 0.80, 0.71)
 DARK_TAN = (0.10, 0.035, 0.012)
 NOSE = (0.01, 0.01, 0.012)
-EYE = (0.035, 0.015, 0.008)
-TONGUE = (0.80, 0.18, 0.22)
+EYE = (0.10, 0.038, 0.012)
+TONGUE = (0.85, 0.22, 0.28)
+BLUSH = (0.75, 0.22, 0.20)
+FRECKLE = (0.30, 0.12, 0.05)
 STONE = (0.03, 0.09, 0.20)
 BALL = (0.55, 0.75, 0.05)
 ZZZ = (0.04, 0.22, 1.0)
@@ -44,7 +46,7 @@ def parse_args():
     p.add_argument("--still", help="render only frame 1 to this PNG")
     p.add_argument("--size", type=int, default=480)
     p.add_argument("--samples", type=int, default=48)
-    p.add_argument("--no-fur", action="store_true", help="skip hair for fast previews")
+    p.add_argument("--fur", action="store_true", help="add plush particle fur (slow)")
     p.add_argument("--blend", help="also save the .blend file here")
     return p.parse_args(argv)
 
@@ -58,7 +60,7 @@ def _node(nodes, kind, **inputs):
     return n
 
 
-def coat_material(name, base, patches=(), roughness=0.75, sheen=0.6):
+def coat_material(name, base, patches=(), roughness=0.78, sheen=0.0):
     """Fur-coloured material. Each patch is (colour, centre, radii): an
     ellipsoid in the object's local space, with a noisy edge, painted over the
     base colour in order. Object coordinates keep markings attached to the part
@@ -70,6 +72,10 @@ def coat_material(name, base, patches=(), roughness=0.75, sheen=0.6):
     bsdf = _node(nodes, "ShaderNodeBsdfPrincipled", Roughness=roughness)
     bsdf.inputs["Sheen Weight"].default_value = sheen
     bsdf.inputs["Sheen Roughness"].default_value = 0.4
+    # Soft matte clay with a hint of subsurface warmth
+    bsdf.inputs["Specular IOR Level"].default_value = 0.25
+    bsdf.inputs["Subsurface Weight"].default_value = 0.04
+    bsdf.inputs["Subsurface Radius"].default_value = (0.008, 0.005, 0.003)
     links.new(bsdf.outputs["BSDF"], out.inputs["Surface"])
 
     coords = nodes.new("ShaderNodeTexCoord")
@@ -94,7 +100,7 @@ def coat_material(name, base, patches=(), roughness=0.75, sheen=0.6):
         # Roughen the edge so patches read as fur markings, not decals
         wobble = nodes.new("ShaderNodeMath")
         wobble.operation = "MULTIPLY_ADD"
-        wobble.inputs[1].default_value = 0.35
+        wobble.inputs[1].default_value = 0.12
         links.new(noise.outputs["Fac"], wobble.inputs[0])
         links.new(length.outputs["Value"], wobble.inputs[2])
         mask = nodes.new("ShaderNodeMapRange")
@@ -145,7 +151,7 @@ def blob(name, loc, scale, mat, parent=None, rot=(0, 0, 0), fur=None, segments=4
     obj.data.materials.append(mat)
     if parent:
         set_parent(obj, parent)
-    if fur and not ARGS.no_fur:
+    if fur and ARGS.fur:
         add_fur(obj, mat, *fur)
     return obj
 
@@ -179,12 +185,13 @@ def add_fur(obj, mat, length, density):
     s.display_step = 2
     s.child_type = "INTERPOLATED"
     s.child_percent = 2
-    s.rendered_child_count = 24
+    s.rendered_child_count = 30
     s.child_length = 1.0
     s.child_length_threshold = 0.4
-    s.clump_factor = 0.15
-    s.roughness_1 = length * 0.4
-    s.roughness_endpoint = length * 0.3
+    s.clump_factor = 0.05
+    s.roughness_1 = length * 0.5
+    s.roughness_2 = length * 0.4
+    s.roughness_endpoint = length * 0.4
     s.root_radius = 1.0
     s.tip_radius = 0.1
     s.radius_scale = 0.0012
@@ -192,110 +199,151 @@ def add_fur(obj, mat, length, density):
 
 
 def build_dog(pose):
-    """Build the puppy. Parts are laid out for the sitting pose; the sleepy pose
-    lies the body down and lowers the head onto the front paws."""
+    """Build the puppy with chibi proportions: an oversized round head, big low
+    eyes, a short muzzle and a small chubby body. Parts are laid out for the
+    sitting pose; the sleepy pose lies the body down and rests the head on the
+    front paws."""
     lying = pose == "lying"
     root = empty("root", (0, 0, 0))
     rig = {"root": root}
 
-    body_fur = (0.022, 9000)
-    head_fur = (0.016, 12000)
-    leg_fur = (0.012, 12000)
+    body_fur = (0.034, 9000)
+    head_fur = (0.026, 12000)
+    leg_fur = (0.018, 12000)
+    short_fur = (0.010, 16000)
 
     torso_mat = coat_material("torso", BLACK, [
-        (TAN, (0, -0.10, -0.25), (0.34, 0.22, 0.22)),
-        (WHITE, (0, -0.26, 0.0), (0.17, 0.16, 0.42)),
+        (TAN, (0, -0.10, -0.20), (0.32, 0.20, 0.18)),
+        (WHITE, (0, -0.24, 0.0), (0.16, 0.14, 0.34)),
     ])
     if lying:
-        rig["torso"] = blob("torso", (0, 0.22, 0.24), (0.29, 0.44, 0.24), torso_mat, root, fur=body_fur)
+        rig["torso"] = blob("torso", (0, 0.20, 0.22), (0.27, 0.38, 0.22), torso_mat, root, fur=body_fur)
     else:
-        rig["torso"] = blob("torso", (0, 0.06, 0.50), (0.30, 0.27, 0.38), torso_mat, root, rot=(-8, 0, 0), fur=body_fur)
+        rig["torso"] = blob("torso", (0, 0.06, 0.42), (0.23, 0.23, 0.32), torso_mat, root, rot=(-4, 0, 0), fur=body_fur)
 
-    neck_mat = coat_material("neck", BLACK, [(WHITE, (0, -0.17, -0.04), (0.12, 0.10, 0.22))])
-    neck_loc = (0, -0.16, 0.40) if lying else (0, -0.05, 0.84)
-    blob("neck", neck_loc, (0.20, 0.19, 0.18), neck_mat, root, fur=body_fur)
+    neck_mat = coat_material("neck", BLACK, [(WHITE, (0, -0.15, -0.02), (0.11, 0.09, 0.18))])
+    neck_loc = (0, -0.14, 0.36) if lying else (0, -0.04, 0.64)
+    blob("neck", neck_loc, (0.18, 0.17, 0.13), neck_mat, root, fur=body_fur)
 
-    leg_mat = coat_material("leg", TAN, [(WHITE, (0, 0, -0.24), (0.3, 0.3, 0.17))])
     paw_mat = coat_material("paw", WHITE)
-    haunch_mat = coat_material("haunch", BLACK, [(TAN, (0, -0.16, -0.06), (0.2, 0.14, 0.14))])
+    haunch_mat = coat_material("haunch", BLACK, [(TAN, (0, -0.14, -0.05), (0.2, 0.13, 0.13))])
     for side in (-1, 1):
         if lying:
-            leg_mat_lying = coat_material("leg_lying", TAN, [(WHITE, (0, -0.24, 0), (0.3, 0.17, 0.3))])
-            blob(f"leg{side}", (side * 0.13, -0.26, 0.08), (0.075, 0.22, 0.075), leg_mat_lying, root, fur=leg_fur)
-            blob(f"paw{side}", (side * 0.13, -0.50, 0.055), (0.085, 0.11, 0.06), paw_mat, root, fur=leg_fur)
-            blob(f"haunch{side}", (side * 0.20, 0.40, 0.17), (0.15, 0.21, 0.16), haunch_mat, root, fur=body_fur)
-            blob(f"backpaw{side}", (side * 0.27, 0.20, 0.045), (0.075, 0.11, 0.055), paw_mat, root, fur=leg_fur)
+            leg_mat = coat_material("leg_lying", TAN, [(WHITE, (0, -0.18, 0), (0.3, 0.13, 0.3))])
+            blob(f"leg{side}", (side * 0.12, -0.24, 0.08), (0.075, 0.18, 0.075), leg_mat, root, fur=leg_fur)
+            blob(f"paw{side}", (side * 0.12, -0.44, 0.06), (0.09, 0.11, 0.065), paw_mat, root, fur=leg_fur)
+            blob(f"haunch{side}", (side * 0.19, 0.34, 0.16), (0.15, 0.19, 0.15), haunch_mat, root, fur=body_fur)
+            blob(f"backpaw{side}", (side * 0.25, 0.16, 0.05), (0.08, 0.11, 0.06), paw_mat, root, fur=leg_fur)
         else:
-            blob(f"leg{side}", (side * 0.12, -0.17, 0.26), (0.075, 0.075, 0.23), leg_mat, root, fur=leg_fur)
-            blob(f"paw{side}", (side * 0.12, -0.22, 0.05), (0.085, 0.11, 0.06), paw_mat, root, fur=leg_fur)
-            blob(f"haunch{side}", (side * 0.21, 0.10, 0.19), (0.15, 0.21, 0.17), haunch_mat, root, fur=body_fur)
-            blob(f"backpaw{side}", (side * 0.27, -0.09, 0.045), (0.075, 0.11, 0.055), paw_mat, root, fur=leg_fur)
+            leg_mat = coat_material("leg", TAN, [(WHITE, (0, 0, -0.17), (0.3, 0.3, 0.13))])
+            blob(f"leg{side}", (side * 0.105, -0.15, 0.21), (0.07, 0.07, 0.19), leg_mat, root, fur=leg_fur)
+            blob(f"paw{side}", (side * 0.105, -0.22, 0.06), (0.095, 0.12, 0.07), paw_mat, root, fur=leg_fur)
+            blob(f"haunch{side}", (side * 0.17, 0.09, 0.16), (0.13, 0.18, 0.14), haunch_mat, root, fur=body_fur)
+            blob(f"backpaw{side}", (side * 0.23, -0.08, 0.05), (0.085, 0.11, 0.06), paw_mat, root, fur=leg_fur)
 
     # Tail: a chain of segments curling out to the dog's left so it shows
-    tail_root = empty("tail_root", (0.12, 0.58, 0.16) if lying else (0.14, 0.24, 0.10), root)
+    tail_root = empty("tail_root", (0.12, 0.50, 0.15) if lying else (0.13, 0.20, 0.09), root)
     rig["tail"] = tail_root
     tail_mat = coat_material("tail", BLACK)
     tail_tip_mat = coat_material("tail_tip", WHITE)
     base = Vector(tail_root.location)
-    for i, (dx, dy, dz) in enumerate([(0.08, 0.06, 0.02), (0.20, 0.05, 0.07), (0.30, -0.02, 0.15), (0.36, -0.10, 0.24)]):
+    for i, (dx, dy, dz) in enumerate([(0.07, 0.05, 0.02), (0.17, 0.04, 0.06), (0.25, -0.02, 0.13), (0.30, -0.08, 0.21)]):
         mat = tail_tip_mat if i == 3 else tail_mat
-        blob(f"tail{i}", base + Vector((dx, dy, dz)), (0.05, 0.05, 0.07), mat, tail_root, fur=leg_fur)
+        blob(f"tail{i}", base + Vector((dx, dy, dz)), (0.05, 0.05, 0.065), mat, tail_root, fur=leg_fur)
 
-    # Head, built around a pivot at the top of the neck so it can tilt
+    # Head, modelled around a pivot at (0, -0.05, 0.95) and then scaled up
+    # and moved onto the shorter neck
     head_pivot = empty("head_pivot", (0, -0.05, 0.95), root)
     rig["head"] = head_pivot
-    head_scale = 1.2  # oversized, toy-like head
+    head_scale = 1.45
     head_mat = coat_material("head", TAN, [
-        (BLACK, (0, 0.10, 0.20), (0.32, 0.30, 0.17)),
-        (BLACK, (0, 0.22, 0.0), (0.30, 0.15, 0.30)),
-        (BLACK, (0, -0.18, 0.13), (0.22, 0.12, 0.075)),
-        (TAN, (-0.085, -0.21, 0.135), (0.04, 0.06, 0.028)),
-        (TAN, (0.085, -0.21, 0.135), (0.04, 0.06, 0.028)),
-        (WHITE, (0, -0.24, 0.04), (0.045, 0.08, 0.22)),
+        (BLACK, (0, 0.10, 0.20), (0.33, 0.30, 0.17)),
+        (BLACK, (0, 0.22, 0.0), (0.31, 0.15, 0.30)),
+        (BLACK, (0, -0.19, 0.13), (0.22, 0.12, 0.07)),
+        (TAN, (-0.09, -0.22, 0.135), (0.04, 0.06, 0.026)),
+        (TAN, (0.09, -0.22, 0.135), (0.04, 0.06, 0.026)),
+        (WHITE, (0, -0.25, 0.04), (0.045, 0.08, 0.22)),
+        (BLUSH, (-0.18, -0.19, -0.07), (0.06, 0.06, 0.04)),
+        (BLUSH, (0.18, -0.19, -0.07), (0.06, 0.06, 0.04)),
     ])
-    blob("head", (0, -0.10, 1.15), (0.29, 0.26, 0.25), head_mat, head_pivot, fur=head_fur)
-    muzzle_mat = coat_material("muzzle", WHITE, [
-        (TAN, (-0.13, 0, 0.03), (0.06, 0.12, 0.08)),
-        (TAN, (0.13, 0, 0.03), (0.06, 0.12, 0.08)),
-    ])
-    blob("muzzle", (0, -0.31, 1.05), (0.15, 0.12, 0.10), muzzle_mat, head_pivot, fur=leg_fur)
-    blob("chin", (0, -0.27, 0.97), (0.09, 0.08, 0.05), paw_mat, head_pivot, fur=leg_fur)
-    blob("nose", (0, -0.425, 1.10), (0.072, 0.05, 0.048), glossy_material("nose", NOSE, 0.25, 0.6), head_pivot, rot=(10, 0, 0))
+    blob("head", (0, -0.10, 1.15), (0.31, 0.27, 0.28), head_mat, head_pivot, fur=head_fur)
+    freckles = [(FRECKLE, (x, -0.11, z), (0.011, 0.03, 0.011))
+                for x, z in [(-0.07, 0.02), (-0.10, -0.01), (-0.05, -0.02), (0.07, 0.02), (0.10, -0.01), (0.05, -0.02), (-0.12, 0.03), (0.12, 0.03)]]
+    muzzle_mat = coat_material("muzzle", WHITE, freckles)
+    blob("muzzle", (0, -0.29, 1.03), (0.16, 0.11, 0.10), muzzle_mat, head_pivot, fur=short_fur)
+    for side in (-1, 1):
+        blob(f"jowl{side}", (side * 0.07, -0.31, 0.98), (0.075, 0.07, 0.065), paw_mat, head_pivot, fur=short_fur)
+    blob("nose", (0, -0.405, 1.075), (0.075, 0.052, 0.052), glossy_material("nose", NOSE, 0.2, 0.8), head_pivot, rot=(10, 0, 0))
+    mouth(head_pivot)
 
+    # Big, low-set eyes with two catchlights each: the main source of cuteness
     eye_mat = glossy_material("eye", EYE, 0.05)
+    rim_mat = glossy_material("eye_rim", NOSE, 0.3, 0.3)
+    pupil_mat = glossy_material("pupil", NOSE, 0.05)
+    sparkle = emissive_material("sparkle", (1, 1, 1), 3.0)
     rig["eyes"] = []
     for side in (-1, 1):
-        eye = blob(f"eye{side}", (side * 0.112, -0.338, 1.175), (0.068, 0.045, 0.072), eye_mat, head_pivot)
+        ex, ez = side * 0.14, 1.15
+        eye = blob(f"eye{side}", (ex, -0.335, ez), (0.068, 0.042, 0.072), eye_mat, head_pivot)
+        blob(f"eye_rim{side}", (ex, -0.318, ez), (0.078, 0.04, 0.082), rim_mat, eye)
+        blob(f"pupil{side}", (ex, -0.362, ez - 0.004), (0.042, 0.02, 0.045), pupil_mat, eye, segments=24)
+        blob(f"sparkle{side}a", (ex - 0.022, -0.378, ez + 0.028), (0.018, 0.008, 0.018), sparkle, eye, segments=16)
+        blob(f"sparkle{side}b", (ex + 0.024, -0.376, ez - 0.03), (0.008, 0.005, 0.008), sparkle, eye, segments=16)
         rig["eyes"].append(eye)
 
-    ear_mat = coat_material("ear", TAN, [(DARK_TAN, (0, 0, -0.22), (0.14, 0.10, 0.12))])
+    ear_mat = coat_material("ear", TAN, [(DARK_TAN, (0, 0, -0.33), (0.16, 0.10, 0.12))])
     rig["ears"] = []
     for side in (-1, 1):
-        pivot = empty(f"ear_pivot{side}", (side * 0.25, -0.06, 1.25), head_pivot)
-        blob(f"ear{side}", (side * 0.31, -0.06, 1.07), (0.11, 0.045, 0.22), ear_mat, pivot,
-             rot=(0, side * -12, 0), fur=leg_fur)
+        pivot = empty(f"ear_pivot{side}", (side * 0.27, -0.05, 1.24), head_pivot)
+        blob(f"ear{side}", (side * 0.35, -0.07, 0.97), (0.13, 0.05, 0.31), ear_mat, pivot,
+             rot=(-6, side * -9, 0), fur=leg_fur)
         rig["ears"].append(pivot)
 
-    tongue = blob("tongue", (0, -0.355, 0.94), (0.05, 0.03, 0.075), glossy_material("tongue", TONGUE, 0.3, 0.3), head_pivot)
+    tongue = blob("tongue", (0, -0.39, 0.96), (0.042, 0.025, 0.06), glossy_material("tongue", TONGUE, 0.3, 0.3), head_pivot)
     rig["tongue"] = tongue
 
-    if lying:
-        # Rest the head on the front paws, chin down
-        head_pivot.location = (0, -0.30, 0.20)
-        head_pivot.rotation_euler = (math.radians(14), math.radians(-14), math.radians(12))
-        # Turn the sleeping dog side-on so the body shows behind the head
-        root.rotation_euler = (0, 0, math.radians(-38))
     head_pivot.scale = (head_scale,) * 3
+    if lying:
+        # Rest the head on the front paws, chin down, and turn the dog
+        # side-on so the body shows behind the head
+        head_pivot.location = (0, -0.30, 0.25)
+        head_pivot.rotation_euler = (math.radians(14), math.radians(-14), math.radians(12))
+        root.rotation_euler = (0, 0, math.radians(-38))
+        root.location = (0.14, 0.18, 0)
+    else:
+        # A slight resting head tilt
+        head_pivot.location = (0, -0.06, 0.69)
+        head_pivot.rotation_euler = (0, math.radians(7), 0)
     return rig
+
+
+def mouth(parent):
+    """A small 'w' smile under the nose."""
+    curve = bpy.data.curves.new("mouth", "CURVE")
+    curve.dimensions = "3D"
+    curve.bevel_depth = 0.005
+    curve.bevel_resolution = 3
+    spline = curve.splines.new("NURBS")
+    pts = [(-0.07, 1.005), (-0.035, 0.985), (0.0, 1.008), (0.035, 0.985), (0.07, 1.005)]
+    spline.points.add(len(pts) - 1)
+    for p, (x, z) in zip(spline.points, pts):
+        y = -0.402 + 0.5 * x * x
+        p.co = (x, y, z, 1)
+    spline.order_u = 3
+    spline.use_endpoint_u = True
+    curve.materials.append(glossy_material("mouth", NOSE, 0.4, 0.0))
+    obj = bpy.data.objects.new("mouth", curve)
+    bpy.context.collection.objects.link(obj)
+    set_parent(obj, parent)
+    return obj
 
 
 def build_ground():
     stone_mat = glossy_material("stone", STONE, 0.6, 0.0)
-    for i, (x, y, s) in enumerate([(-0.42, -0.28, 0.10), (-0.26, -0.40, 0.07), (0.38, -0.36, 0.08),
-                                   (0.50, -0.18, 0.06), (-0.50, -0.05, 0.06)]):
+    for i, (x, y, s) in enumerate([(-0.36, -0.26, 0.09), (-0.22, -0.38, 0.065), (0.40, -0.20, 0.06)]):
         blob(f"stone{i}", (x, y, s * 0.3), (s * 1.3, s, s * 0.6), stone_mat, segments=24)
     ball_mat = coat_material("ball", BALL, roughness=0.9, sheen=1.0)
-    blob("ball", (0.40, -0.48, 0.085), (0.085, 0.085, 0.085), ball_mat, fur=(0.006, 30000), segments=32)
+    blob("ball", (0.33, -0.40, 0.085), (0.085, 0.085, 0.085), ball_mat, fur=(0.006, 30000), segments=32)
 
 
 def build_zzz():
@@ -331,7 +379,7 @@ def setup_scene(size, samples):
     scene.render.film_transparent = True
     scene.render.image_settings.file_format = "PNG"
     scene.render.image_settings.color_mode = "RGBA"
-    scene.view_settings.view_transform = "Standard"
+    scene.view_settings.view_transform = "Khronos PBR Neutral"
     scene.frame_start, scene.frame_end = 1, FRAMES
     scene.render.fps = FPS
 
@@ -343,8 +391,8 @@ def setup_scene(size, samples):
     cam_data.lens = 70
     cam = bpy.data.objects.new("camera", cam_data)
     scene.collection.objects.link(cam)
-    cam.location = (0.6, -4.0, 1.55)
-    target = Vector((0.0, -0.08, 0.80))
+    cam.location = (0.4, -3.8, 1.3)
+    target = Vector((0.0, -0.10, 0.74))
     cam.rotation_euler = (target - cam.location).to_track_quat("-Z", "Y").to_euler()
     scene.camera = cam
 
@@ -356,9 +404,11 @@ def setup_scene(size, samples):
         light.rotation_euler = (Vector((0, 0, 0.7)) - Vector(loc)).to_track_quat("-Z", "Y").to_euler()
         scene.collection.objects.link(light)
 
-    area_light("key", (-2.2, -3.0, 3.2), 900, 2.5, (1.0, 0.95, 0.88))
-    area_light("fill", (3.0, -2.5, 1.2), 250, 3.0, (0.85, 0.9, 1.0))
-    area_light("rim", (1.2, 3.0, 2.8), 700, 1.5)
+    # Big soft warm key, gentle fill, and strong rims to make the fur edges glow
+    area_light("key", (-2.0, -3.2, 3.0), 1000, 4.0, (1.0, 0.92, 0.82))
+    area_light("fill", (3.0, -2.5, 1.2), 300, 4.0, (0.88, 0.92, 1.0))
+    area_light("rim", (1.8, 2.8, 1.2), 350, 2.5, (1.0, 0.95, 0.9))
+    area_light("rim2", (-1.8, 2.6, 1.0), 200, 2.5, (0.9, 0.93, 1.0))
 
 
 # --- animation -------------------------------------------------------------
@@ -406,7 +456,7 @@ def animate(rig, mood, zzz):
         if mood == "sleepy":
             for i, z in enumerate(zzz):
                 t = ((f - 1) / FRAMES + i / 3) % 1.0
-                key(z, "location", f, (0.10 + 0.22 * t, -0.45, 0.62 + 0.50 * t))
+                key(z, "location", f, (0.12 + 0.20 * t, -0.50, 0.78 + 0.45 * t))
                 s = 0.10 + 0.10 * t
                 fade = min(1.0, t * 4, (1 - t) * 4)
                 key(z, "scale", f, (s * fade, s * fade, s * fade))
