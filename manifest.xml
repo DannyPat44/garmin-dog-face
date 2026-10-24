@@ -3,7 +3,6 @@
     <iq:application id="4199ef59-9a8f-402f-9c5a-412afaba2d22" type="watchface" name="@Strings.AppName" entry="DogFaceApp" launcherIcon="@Drawables.LauncherIcon" minApiLevel="3.2.0">
         <iq:products>
             <iq:product id="fr265"/>
-            <iq:product id="fr265s"/>
         </iq:products>
         <iq:permissions/>
         <iq:languages>

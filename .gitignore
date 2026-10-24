@@ -8,3 +8,4 @@ internal-mir/
 *.der
 *.pem
 .DS_Store
+build/

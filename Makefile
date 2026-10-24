@@ -19,5 +19,7 @@ run: build
 package:
 	"$(SDK)bin/monkeyc" -f monkey.jungle -e -r -y "$(KEY)" -o bin/$(APP).iq
 
+# Rendering takes ~30 minutes; build_art alone re-encodes existing frames
 art:
-	uv run tools/make_dog.py
+	tools/render_frames.sh
+	tools/build_art.sh

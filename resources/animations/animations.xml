@@ -1,0 +1,5 @@
+<animations>
+    <animation id="DogAwakeAnimation" filename="dog_awake/awake.mmm" />
+    <animation id="DogHappyAnimation" filename="dog_happy/happy.mmm" />
+    <animation id="DogSleepyAnimation" filename="dog_sleepy/sleepy.mmm" />
+</animations>
