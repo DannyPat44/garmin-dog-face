@@ -19,7 +19,7 @@ run: build
 package:
 	"$(SDK)bin/monkeyc" -f monkey.jungle -e -r -y "$(KEY)" -o bin/$(APP).iq
 
-# Rendering takes ~3 minutes; build_art alone re-encodes existing frames
+# Rendering takes ~12 minutes; build_art alone re-encodes existing frames
 art:
 	tools/render_frames.sh
 	tools/build_art.sh

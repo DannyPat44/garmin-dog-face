@@ -9,9 +9,9 @@ SDK=$(cat "$HOME/Library/Application Support/Garmin/ConnectIQ/current-sdk.cfg")
 export JAVA_HOME=${JAVA_HOME:-/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home}
 export PATH="$JAVA_HOME/bin:$PATH"
 # Frames are 400x400; crop to the dog (and its Zzz) before scaling to the watch size
-CROP=330:340:40:48
-WIDTH=234
-HEIGHT=241
+CROP=292:328:76:62
+WIDTH=222
+HEIGHT=249
 FPS=10
 
 for mood in awake happy sleepy; do

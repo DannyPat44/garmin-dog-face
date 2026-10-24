@@ -33,7 +33,7 @@ class DogFaceView extends WatchUi.WatchFace {
 
     private const SLEEP_START_HOUR = 22;
     private const SLEEP_END_HOUR = 6;
-    private const DOG_WIDTH = 234;
+    private const DOG_WIDTH = 222;
     private const CLOCK_TOP = 0.125;
     private const CLOCK_GAP = 6;
 

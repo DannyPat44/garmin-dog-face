@@ -1,7 +1,7 @@
 # Dog Face
 
 A Connect IQ watch face for the Garmin Forerunner 265 with an animated,
-Pixar-style clay 3D puppy, inspired by the "Cuddly Cat" face. The puppy is modelled on a real
+fluffy 3D puppy, inspired by the "Cuddly Cat" face. The puppy is modelled on a real
 tri-colour hound pup: black saddle, tan face and legs, white blaze, chest and
 paws, tan eyebrow dots and floppy ears.
 
@@ -22,10 +22,12 @@ a dim, shifting clock to stay within Garmin's burn-in rules.
 Following [Simon Willison's approach](https://til.simonwillison.net/llms/blender-coding-agents-macos),
 the puppy is built entirely in code and rendered with Blender:
 
-1. `tools/blender/dog.py` builds the model (matte clay ellipsoids with painted
-   markings, big glossy eyes; `--fur` adds plush fur), the ground and lights, keys a 30-frame looping animation for a
+1. `tools/blender/dog.py` sculpts the body, head, ears and tail from blended
+   metaballs, covers them in soft particle fur (Principled Hair BSDF), and paints
+   the markings procedurally. Eyes get a procedural iris texture and the nose a
+   bumpy leather texture. `--no-fur` gives a 3 second shape draft, the ground and lights, keys a 30-frame looping animation for a
    mood and renders it with Cycles.
-2. `tools/render_frames.sh` renders all three moods into `build/frames/` (~3 min).
+2. `tools/render_frames.sh` renders all three moods into `build/frames/` (~12 min).
 3. `tools/build_art.sh` flattens frames onto black, encodes them with Garmin's
    Monkey Motion into `resources/animations/`, and saves the still frames and
    launcher icon into `resources/drawables/`.

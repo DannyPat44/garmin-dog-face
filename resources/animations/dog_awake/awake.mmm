@@ -3,8 +3,8 @@
 # Monkey Motion Manifest file
 # Video file: /Users/dpatterson/workspace/garmin/garmin-dog-face/build/awake.gif
 # Output File Path: resources/animations/dog_awake
-# Resolution: 234x241
+# Resolution: 222x249
 # Frame Rate: 10
 
-# 234x241 part number mappings
-006-B4257-00=awake_234x241_16_RGB565.mm
+# 222x249 part number mappings
+006-B4257-00=awake_222x249_16_RGB565.mm
