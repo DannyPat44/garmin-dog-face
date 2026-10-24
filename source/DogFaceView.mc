@@ -7,7 +7,7 @@ import Toybox.Time;
 import Toybox.Time.Gregorian;
 import Toybox.WatchUi;
 
-// Replays the dog animation a couple of times each time the watch wakes up.
+// Keeps the dog animation looping while the watch is awake.
 class DogAnimationDelegate extends WatchUi.AnimationDelegate {
 
     private var _view as DogFaceView;
@@ -26,19 +26,18 @@ class DogAnimationDelegate extends WatchUi.AnimationDelegate {
 
 // Watch face with an animated 3D puppy whose mood follows the day:
 // sleepy overnight, happy once the step goal is met, awake otherwise.
-// The animation plays when you raise your wrist; in between, the first
-// frame is drawn as a still so the face never looks empty.
+// The animation loops while the screen is awake (the system stops it when
+// the watch goes to sleep); in between, the first frame is drawn as a still
+// so the face never looks empty.
 class DogFaceView extends WatchUi.WatchFace {
 
     private const SLEEP_START_HOUR = 22;
     private const SLEEP_END_HOUR = 6;
     private const DOG_SIZE = 220;
-    private const LOOPS_PER_WAKE = 2;
 
     private var _mood as Symbol?;
     private var _dog as BitmapResource?;
     private var _animation as AnimationLayer?;
-    private var _loopsLeft as Number = 0;
     private var _dogX as Number = 0;
     private var _dogY as Number = 0;
     private var _lowPower as Boolean = false;
@@ -119,11 +118,8 @@ class DogFaceView extends WatchUi.WatchFace {
     }
 
     function onLoopComplete() as Void {
-        _loopsLeft -= 1;
-        if (_loopsLeft > 0) {
+        if (!_lowPower) {
             playLoop();
-        } else {
-            stopPlaying();
         }
     }
 
@@ -131,7 +127,6 @@ class DogFaceView extends WatchUi.WatchFace {
         if (_lowPower && _burnInProtection) {
             return;
         }
-        _loopsLeft = LOOPS_PER_WAKE;
         playLoop();
     }
 
@@ -145,7 +140,6 @@ class DogFaceView extends WatchUi.WatchFace {
 
     // Hide the layer so the still frame underneath shows through.
     private function stopPlaying() as Void {
-        _loopsLeft = 0;
         var animation = _animation;
         if (animation != null) {
             animation.stop();

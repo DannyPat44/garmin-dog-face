@@ -11,7 +11,7 @@ paws, tan eyebrow dots and floppy ears.
 | happy  | step goal reached  | tongue out, bouncing, fast tail wag    |
 | awake  | the rest of the time | head tilt, blink, tail wag           |
 
-The animation plays twice whenever you raise your wrist; otherwise the first
+The animation loops while the screen is awake (after a wrist raise); otherwise the first
 frame shows as a still. Battery sits at the top, then the time, steps (left),
 heart rate (right) and the date. In always-on mode the AMOLED screen shows only
 a dim, shifting clock to stay within Garmin's burn-in rules.
