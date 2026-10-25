@@ -86,6 +86,12 @@ class Story {
         return _mood;
     }
 
+    //! Walks fill the whole screen, so she comes and goes off its edge; the
+    //! other clips fill the dog's box
+    static function fillsScreen(clip as Number) as Boolean {
+        return clip == WALK_IN || clip == WALK_OUT;
+    }
+
     //! The mood still matching a clip's last frame, drawn under the clip so
     //! there's no gap before the next one; null when she ends off screen.
     //! Walk-ins and getting up end on the awake loop's first frame.

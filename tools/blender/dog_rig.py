@@ -633,6 +633,33 @@ DROP_SPEED = 0.15        # units/s as the ball leaves her mouth
 DROP_ANGLE = 50          # degrees to her left of straight ahead: rolls out across the screen
 
 
+# The watch's layout, in pixels (see DogFaceView and tools/build_art.sh): the
+# loops are cropped to CROP (left, top, width, in 400px-frame units, so
+# whatever size was rendered) and scaled to DOG_BOX_WIDTH at DOG_AT on the
+# SCREEN. The walks fill the whole screen instead, so the dog can come and go
+# off its edge.
+SCREEN = 416
+DOG_AT = (97, 134)
+DOG_BOX_WIDTH = 222
+CROP = (76, 62, 292)
+
+
+def frame_full_face(scene, size):
+    """Widen the view to the whole watch screen, keeping the dog exactly where
+    the loops' crop puts her, so a walk-in ends on the loops' first frame."""
+    scale = DOG_BOX_WIDTH / CROP[2]     # screen px per 400px-frame px
+    width = SCREEN / scale              # the screen, in 400px-frame px
+    left = CROP[0] - DOG_AT[0] / scale
+    top = CROP[1] - DOG_AT[1] / scale
+    cam = scene.camera.data
+    cam.sensor_fit = "HORIZONTAL"
+    cam.sensor_width *= width / 400
+    # Shifts are fractions of the frame width, y up
+    cam.shift_x = (left + width / 2 - 200) / width
+    cam.shift_y = (200 - top - width / 2) / width
+    scene.render.resolution_x = scene.render.resolution_y = round(size * width / 400)
+
+
 def walk_path(speeds, headings, end):
     """Positions for each frame from per-frame speeds and headings, ending at `end`."""
     pos = [Vector((0, 0, 0))]
@@ -646,17 +673,20 @@ class WalkIn:
     """Walks in (carrying the ball, if she has one), slows and turns toward
     the camera, drops the ball, which bounces and rolls, then sits and settles
     on the sitting loops' first frame."""
-    # Starts far enough left to be outside the watch's dog box on frame 1
-    FRAMES = 88
-    SLOW_FROM, STOP_AT = 44, 56
-    TURN_FROM, TURN_TO = 42, 60
-    DIP_FROM, DROP_AT, DIP_TO = 57, 61, 66
-    SIT_FROM, SIT_TO = 65, 78
+    # Starts far enough left to be off the watch's screen on frame 1
+    FRAMES = 110
+    SLOW_FROM, STOP_AT = 66, 78
+    TURN_FROM, TURN_TO = 64, 82
+    DIP_FROM, DROP_AT, DIP_TO = 79, 83, 88
+    SIT_FROM, SIT_TO = 87, 100
+    # Trots in, easing to a walk well before she slows, like the walk-out
+    TROT_FROM, TROT_TO = 30, 44
 
     def __init__(self, rig, loose_ball):
         self.rig, self.ball = rig, loose_ball
         n = self.FRAMES
-        self.speeds = [WALK_SPEED * (1 - ease(self.SLOW_FROM, self.STOP_AT, f)) for f in range(1, n + 1)]
+        self.speeds = [WALK_SPEED * (1 + 0.4 * (1 - ease(self.TROT_FROM, self.TROT_TO, f)))
+                       * (1 - ease(self.SLOW_FROM, self.STOP_AT, f)) for f in range(1, n + 1)]
         self.headings = [WALK_HEADING + (SIT_HEADING - WALK_HEADING) * ease(self.TURN_FROM, self.TURN_TO, f)
                          for f in range(1, n + 1)]
         self.positions = walk_path(self.speeds, self.headings, SIT_SPOT)
@@ -721,7 +751,8 @@ def ball_rest(rig, ball):
 
 class WalkOut:
     """Stands up, steps to the ball and picks it up, turns and walks off."""
-    FRAMES = 76
+    # Ends once she's trotted off the watch's screen
+    FRAMES = 100
     STAND_FROM, STAND_TO = 5, 15
     STEP_FROM, STEP_TO = 14, 24
     DIP_FROM, PICK_AT, DIP_TO = 22, 26, 31
@@ -898,6 +929,7 @@ def main():
 
     scene.frame_start, scene.frame_end = 1, frames
     if args.anim in ("walkin", "walkout"):
+        frame_full_face(scene, args.size)
         # Motion blur smooths the walk and the bouncing ball at 10 fps
         scene.render.use_motion_blur = True
         scene.render.motion_blur_shutter = 0.2   # longer smears furry legs into mush

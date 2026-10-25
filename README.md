@@ -92,8 +92,10 @@ everything is built in code in `tools/blender/dog.py`:
    Millie's collar lettering (Fredoka, from `tools/fonts/`).
 4. The dogs are posed and animated on a shared skeleton (see below) and
    rendered with Cycles on a transparent background at 10 fps.
-5. `tools/build_art.sh` crops and flattens the frames onto black, fades the
-   sides of the dog's box so walking dogs slide in softly, encodes each clip
+5. `tools/build_art.sh` flattens the frames onto black and fits them to the
+   watch: the walks fill the whole round screen, so dogs come and go off its
+   edge under the steps and heart rate; the loops and lying down are cropped
+   to the dog's box below the clock, with its sides faded. It encodes each clip
    with Garmin's Monkey Motion (`monkeym`), and writes the resource XML and
    `source/Dogs.mc`, the list of dogs the watch face rotates through. "Get up"
    is "lie down" played backwards.
@@ -144,9 +146,14 @@ Nova's spec is "short legs, long body, gold coat, silky fur, sombrero head".
   right front) driven by distance travelled, so paws don't slide as the dog
   speeds up or slows down; the body bobs, the head nods, the tail swings.
 - **Animations** (`--anim`):
-  - `walkin`: walks in carrying the ball, slows and turns toward the camera,
-    drops the ball and sits. Its last frame is the sitting loops' first.
-  - `walkout`: stands, steps to the ball and picks it up, turns and walks off.
+  - `walkin`: trots in from off screen carrying the ball, slows and turns
+    toward the camera, drops the ball and sits. Its last frame is the sitting
+    loops' first.
+  - `walkout`: stands, steps to the ball and picks it up, turns and trots off
+    screen.
+  - The walks are framed to the whole watch screen (`frame_full_face`: a
+    wider, shifted camera view, so the dog lands exactly where the loops' crop
+    puts her); everything else is framed to the dog's box.
   - `awake`, `happy`: sitting loops; `sleepy`: lying with her head on her paws.
   - `liedown`: from sitting to lying with a yawn, for the dog who stays the night.
   - `poses`: the key poses side-on and three-quarter, for checking a new dog.

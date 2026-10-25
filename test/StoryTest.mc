@@ -100,3 +100,13 @@ function storyEndStills(logger as Logger) as Boolean {
     Test.assertEqual(Story.endStill(Story.HAPPY), Story.HAPPY);
     return true;
 }
+
+(:test)
+function storyWalksFillTheScreen(logger as Logger) as Boolean {
+    Test.assert(Story.fillsScreen(Story.WALK_IN));
+    Test.assert(Story.fillsScreen(Story.WALK_OUT));
+    Test.assert(!Story.fillsScreen(Story.AWAKE));
+    Test.assert(!Story.fillsScreen(Story.LIE_DOWN));
+    Test.assert(!Story.fillsScreen(Story.GET_UP));
+    return true;
+}

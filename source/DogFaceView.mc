@@ -40,9 +40,14 @@ class DogFaceView extends WatchUi.WatchFace {
 
     private const SLEEP_START_HOUR = 22;
     private const SLEEP_END_HOUR = 6;
+    // The dog's box, where the clips are cropped to; the walks fill the whole
+    // screen and are framed around it (DOG_AT in tools/blender/dog_rig.py)
     private const DOG_WIDTH = 222;
-    private const CLOCK_TOP = 0.125;
-    private const CLOCK_GAP = 6;
+    private const DOG_TOP = 134;
+    // Low enough that the date row and the clock's corners clear the round
+    // edge of the screen; the clock overlaps the empty top of the dog's box
+    private const ROW_TOP = 0.096;
+    private const CLOCK_TOP = 0.145;
 
     private var _story as Story?;
     // [dog][mood] stills and [dog][clip] animations, in Story's order
@@ -72,10 +77,9 @@ class DogFaceView extends WatchUi.WatchFace {
     function onLayout(dc as Dc) as Void {
         var clockFont = WatchUi.loadResource(Rez.Fonts.ClockFont) as FontResource;
         _clockFont = clockFont;
-        // The dog always starts just below the clock so the two never overlap
         _clockY = (dc.getHeight() * CLOCK_TOP).toNumber();
         _dogX = (dc.getWidth() - DOG_WIDTH) / 2;
-        _dogY = _clockY + dc.getFontHeight(clockFont) + CLOCK_GAP;
+        _dogY = DOG_TOP;
         var face = new WatchUi.Layer({:locX => 0, :locY => 0, :width => dc.getWidth(), :height => dc.getHeight()});
         addLayer(face);
         _face = face;
@@ -129,7 +133,7 @@ class DogFaceView extends WatchUi.WatchFace {
         // Battery and date share the top row
         var today = Gregorian.info(Time.now(), Time.FORMAT_MEDIUM);
         var date = Lang.format("$1$ $2$", [today.day_of_week.toUpper(), today.day]);
-        var rowY = (height * 0.075).toNumber();
+        var rowY = (height * ROW_TOP).toNumber();
         var battery = System.getSystemStats().battery;
         var percent = battery.format("%d") + "%";
         var percentWidth = dc.getTextWidthInPixels(percent, Graphics.FONT_XTINY);
@@ -146,16 +150,23 @@ class DogFaceView extends WatchUi.WatchFace {
             dc.drawText(width / 2, _clockY, clockFont, formatTime(clock), Graphics.TEXT_JUSTIFY_CENTER);
         }
 
-        // Steps on the left, heart rate on the right, like the cat face
+        // Steps on the left, heart rate on the right, like the cat face;
+        // outlined in black so they read over a dog walking past underneath
         var statY = (height * 0.53).toNumber();
         var leftX = (width * 0.13).toNumber();
         var rightX = (width * 0.87).toNumber();
-        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-        drawSteps(dc, leftX, statY - 16);
-        drawHeart(dc, rightX, statY - 18, 9);
         var steps = activity.steps != null ? activity.steps.toString() : "--";
-        dc.drawText(leftX, statY, Graphics.FONT_XTINY, steps, Graphics.TEXT_JUSTIFY_CENTER);
-        dc.drawText(rightX, statY, Graphics.FONT_XTINY, heartRate(), Graphics.TEXT_JUSTIFY_CENTER);
+        var heart = heartRate();
+        var outline = [[-2, 0], [2, 0], [0, -2], [0, 2], [-1, -1], [1, 1], [-1, 1], [1, -1], [0, 0]];
+        for (var i = 0; i < outline.size(); i++) {
+            var dx = outline[i][0];
+            var dy = outline[i][1];
+            dc.setColor(dx == 0 && dy == 0 ? Graphics.COLOR_WHITE : Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
+            drawSteps(dc, leftX + dx, statY - 16 + dy);
+            drawHeart(dc, rightX + dx, statY - 18 + dy, 9);
+            dc.drawText(leftX + dx, statY + dy, Graphics.FONT_XTINY, steps, Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(rightX + dx, statY + dy, Graphics.FONT_XTINY, heart, Graphics.TEXT_JUSTIFY_CENTER);
+        }
     }
 
     // The system stops animations when the view is hidden

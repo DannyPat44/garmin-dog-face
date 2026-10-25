@@ -6,8 +6,9 @@
 #   resources/animations/animations.xml, resources/drawables/drawables.xml
 #   source/Dogs.mc  the list of dogs and their resources, for the watch face
 # Clips, in Story's order: the mood loops (awake happy sleepy), walk in, walk
-# out, lie down, and get up (lie down played backwards). The launcher icon is
-# left as it is.
+# out, lie down, and get up (lie down played backwards). The walks fill the
+# whole round screen (render_rig frames them that way); the rest are cropped
+# to the dog's box. The launcher icon is left as it is.
 # DOGS lists the dogs, e.g. DOGS="ozzie" for a face with only Ozzie; FRAMES
 # is where the renders are (default build/frames/rig).
 set -e
@@ -23,6 +24,7 @@ HEIGHT=249
 # Walking dogs fade in and out over this many pixels at the sides of the box
 FADE=18
 FPS=10
+SCREEN=416
 DOGS=${DOGS:-"millie nova ozzie"}
 FRAMES=${FRAMES:-build/frames/rig}
 CLIPS="awake happy sleepy walkin walkout liedown getup"
@@ -33,6 +35,9 @@ capitalise() { echo "$1" | awk '{print toupper(substr($0,1,1)) substr($0,2)}'; }
 # The edge fade: white, ramping to black over FADE pixels at the left and right
 ffmpeg -v error -y -f lavfi -i "color=white:s=${WIDTH}x$HEIGHT" -vf \
     "geq=lum='255*min(1,min(X,W-1-X)/$FADE)':cb=128:cr=128" -frames:v 1 build/edge_fade.png
+# The round screen, for the walks: white inside, black outside
+ffmpeg -v error -y -f lavfi -i "color=white:s=${SCREEN}x$SCREEN" -vf \
+    "geq=lum='255*clip(($SCREEN/2-hypot(X-$SCREEN/2+0.5,Y-$SCREEN/2+0.5))+0.5,0,1)':cb=128:cr=128" -frames:v 1 build/screen_mask.png
 
 rm -rf resources/animations/*/ resources/drawables/*_awake.png resources/drawables/*_happy.png resources/drawables/*_sleepy.png
 stills_mc=""
@@ -57,14 +62,25 @@ for dog in $DOGS; do
         fi
         frames="$FRAMES/$dog/$src/%04d.png"
         size=$(ffprobe -v error -select_streams v -show_entries stream=width -of csv=p=0 "$FRAMES/$dog/$src/0001.png")
-        # Flatten onto black (the watch background), fade the box edges and
-        # quantise to a GIF for Monkey Motion
+        # Walks: the whole screen, masked to its circle. The rest: cropped to
+        # the box, with its edges faded
+        if [ "$clip" = walkin ] || [ "$clip" = walkout ]; then
+            fit="scale=$SCREEN:$SCREEN:flags=lanczos"
+            mask=build/screen_mask.png
+            res=${SCREEN}x$SCREEN
+        else
+            fit="crop=$CROP,scale=$WIDTH:$HEIGHT:flags=lanczos"
+            mask=build/edge_fade.png
+            res=${WIDTH}x$HEIGHT
+        fi
+        # Flatten onto black (the watch background), mask and quantise to a
+        # GIF for Monkey Motion
         ffmpeg -v error -y -framerate $FPS -i "$frames" -f lavfi -i "color=black:s=${size}x$size:r=$FPS" \
-            -loop 1 -i build/edge_fade.png -filter_complex \
-            "[1][0]overlay=shortest=1,${reverse}crop=$CROP,scale=$WIDTH:$HEIGHT:flags=lanczos,format=rgb24[d];[2]format=rgb24[m];[d][m]blend=all_mode=multiply:shortest=1,split[a][b];[a]palettegen=stats_mode=full[p];[b][p]paletteuse=dither=sierra2_4a" \
+            -loop 1 -i $mask -filter_complex \
+            "[1][0]overlay=shortest=1,${reverse}$fit,format=rgb24[d];[2]format=rgb24[m];[d][m]blend=all_mode=multiply:shortest=1,split[a][b];[a]palettegen=stats_mode=full[p];[b][p]paletteuse=dither=sierra2_4a" \
             "build/$name.gif"
         rm -rf "resources/animations/$name"
-        bash "${SDK}bin/monkeym" -v "build/$name.gif" -d fr265 -r ${WIDTH}x${HEIGHT} -f $FPS \
+        bash "${SDK}bin/monkeym" -v "build/$name.gif" -d fr265 -r $res -f $FPS \
             -o "resources/animations/$name" > "build/monkeym_$name.log"
         # monkeym records the absolute source path; keep the repo free of local paths
         sed -i '' "s|# Video file: .*/build/|# Video file: build/|" "resources/animations/$name/$name.mmm"
