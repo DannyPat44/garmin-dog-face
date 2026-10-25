@@ -64,7 +64,8 @@ brew install ffmpeg libmtp openjdk@17
 | `make frames` | Render every dog's moods with Blender into `build/frames/` (~30 min; `DOGS=nova MOODS=happy` narrows it) |
 | `make preview` | Watch-size review GIFs in `build/review/`, plus a grid of all of them |
 | `make art` | Encode rendered frames into the watch resources and `source/Dogs.mc` |
-| `make rig` | Skeleton proof of concept: Ozzie sits down (`FUR=1` for fur, ~10 min) |
+| `make rig` | Render dogs on the shared skeleton into `build/frames/rig/` (`DOGS=ozzie ANIMS=walkin` narrows it; ~25 s a frame with fur) |
+| `make rig-preview` | Watch-size GIFs of the skeleton renders, plus a "story" GIF: walk in, sit, walk out |
 
 Quick single-frame preview while you tweak a dog (`--no-fur` takes seconds):
 
@@ -109,15 +110,45 @@ about 12 KB of its 128 KB memory limit, and nine animations make a 6.7 MB app
 To publish your own version, change the app `id` in `manifest.xml` and the
 name in `resources/strings/strings.xml`.
 
-## Work in progress: skeletons
+## The skeleton: one rig for every dog
 
-The dogs currently swap while the screen is off. The goal is for each dog to
-walk in at the top of the hour and sit down. A cross-fade between the
-standing and sitting sculpts looked wrong, so `tools/blender/rig_poc.py` tries
-a skeleton instead: Ozzie's body and legs become one mesh bound to an 11-bone
-armature with Blender's automatic weights, and sitting is just bone rotations
-(the spine swings around the shoulders, the back legs fold, the head stays
-level). The fur rides on the deformed mesh. Run `make rig` to see it.
+`tools/blender/dog_rig.py` puts every dog on the same skeleton, so they all
+stand, walk, sit and lie down the same way. A dog is a spec in `SPECS`: its
+torso (metaball ellipsoids), leg attachment points and heights, coat colours
+and patches, tail, head (from `dog.py`), fur length and a fur style. The legs,
+the bones and the poses come from the spec, so a new dog is mostly numbers:
+Nova's spec is "short legs, long body, gold coat, silky fur, sombrero head".
+
+- **Skinning:** the body and legs are one sculpt bound to the armature (spine
+  pivoting at the shoulders, chest, neck, two-joint legs with paws, a four-bone
+  tail) with Blender's automatic weights; the head hangs off the neck bone.
+  Every move is a real bend at the joints, and the fur rides along.
+- **Poses** are bone angles shared by every dog: standing, sitting, lying (a
+  sphinx: front legs out, hind legs tucked). How far a dog drops scales with its
+  leg height, and a spec can adjust any pose.
+- **Fur styles:** coarse (Ozzie), silky (Nova: long, glossy, wavy locks) and
+  fluffy (Millie: soft and frizzy) set how strands clump, wave and frizz, how
+  thick they are, and how glossy.
+- **Walking** is a four-beat walk cycle (left hind, left front, right hind,
+  right front) driven by distance travelled, so paws don't slide as the dog
+  speeds up or slows down; the body bobs, the head nods, the tail swings.
+- **Animations** (`--anim`):
+  - `walkin`: walks in carrying the ball, slows and turns toward the camera,
+    drops the ball and sits. Its last frame is the sitting loops' first.
+  - `walkout`: stands, steps to the ball and picks it up, turns and walks off.
+  - `awake`, `happy`: sitting loops; `sleepy`: lying with her head on her paws.
+  - `liedown`: from sitting to lying with a yawn, for the dog who stays the night.
+  - `poses`: the key poses side-on and three-quarter, for checking a new dog.
+- **The ball** is simulated when dropped: gravity, bounces that lose height and
+  speed (sub-stepped at 1 kHz so bounces land between frames), then rolling to a
+  stop, spinning the right way. Walk-ins and walk-outs use motion blur, which
+  smooths the bounce and the walk at 10 fps. The walk-out steps to wherever the
+  ball came to rest.
+
+The watch face still swaps dogs while the screen is off; the walk-ins and
+walk-outs are rendered for review (`make rig-preview`) but not yet on the
+watch. Ozzie is the first dog done this way; Nova and Millie have specs and
+pose checks.
 
 ## Layout
 
@@ -126,7 +157,8 @@ level). The fur rides on the deformed mesh. Run `make rig` to see it.
 - `resources/animations/`, `resources/drawables/`: Monkey Motion animations
   and still frames (generated)
 - `tools/blender/dog.py`: the dogs, props, scene and animations
-- `tools/blender/rig_poc.py`: the skeleton proof of concept
+- `tools/blender/dog_rig.py`: the shared skeleton, dog specs, poses, walk cycle, ball physics and animations
+- `tools/render_rig.sh`, `tools/preview_rig.sh`: render and preview the skeleton animations
 - `tools/render_frames.sh`, `tools/build_art.sh`, `tools/preview_gifs.sh`: the art pipeline
 - `tools/make_font.py`: turns `tools/fonts/Fredoka.ttf` (SIL OFL) into the clock's bitmap font
 - `store/`: Connect IQ Store listing and screenshots

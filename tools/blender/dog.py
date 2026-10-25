@@ -436,33 +436,7 @@ def build_puppy(pose):
     # Head
     head_pivot = empty("head_pivot", (0, -0.05, 0.95), root)
     rig["head"] = head_pivot
-    head = [
-        ((0, -0.07, 1.17), (0.23, 0.22, 0.21)),
-        ((0, -0.19, 1.20), (0.16, 0.10, 0.10)),
-        ((-0.12, -0.19, 1.07), (0.10, 0.10, 0.09)),
-        ((0.12, -0.19, 1.07), (0.10, 0.10, 0.09)),
-        ((0, -0.29, 1.05), (0.11, 0.11, 0.08)),
-        ((-0.055, -0.30, 1.00), (0.065, 0.07, 0.055)),
-        ((0.055, -0.30, 1.00), (0.065, 0.07, 0.055)),
-        ((0, -0.24, 0.97), (0.07, 0.07, 0.05)),
-    ]
-    head_patches = [
-        (BLACK, (0, 0.02, 1.36), (0.30, 0.30, 0.17)),
-        (BLACK, (0, 0.14, 1.18), (0.28, 0.12, 0.24)),
-        (TAN, (-0.08, -0.24, 1.30), (0.04, 0.06, 0.028)),
-        (TAN, (0.08, -0.24, 1.30), (0.04, 0.06, 0.028)),
-        (WHITE, (0, -0.28, 1.20), (0.04, 0.12, 0.17)),
-        (WHITE, (0, -0.35, 1.02), (0.13, 0.12, 0.10)),
-        (WHITE, (0, -0.25, 0.96), (0.08, 0.08, 0.06)),
-    ]
-    head_mesh = sculpt("head", head, coat_materials("head", TAN, head_patches), head_pivot,
-                       fur=(0.02, 12000, 0.3))
-
-    add_face(rig, head_mesh, head_pivot, nose_z=1.075, eye_x=0.10, eye_z=1.165, eye_r=0.055,
-             tongue_loc=(0, -0.36, 0.95))
-    # Long, soft hound ears with dark edges
-    rig["ears"] = [drop_ear(side, (side * 0.19, -0.05, 1.27), TAN, head_pivot, fur=(0.022, 12000, 0.6),
-                            tip=(DARK_TAN, (0.12, 0.08, 0.09))) for side in (-1, 1)]
+    millie_head(rig, head_pivot)
 
     head_pivot.scale = (1.42,) * 3
     if lying:
@@ -541,24 +515,7 @@ def build_nova(pose):
 
     head_pivot = empty("head_pivot", (0, -0.05, 0.95), root)
     rig["head"] = head_pivot
-    head = [
-        ((0, -0.05, 1.18), (0.19, 0.20, 0.18)),
-        ((0, -0.17, 1.21), (0.13, 0.09, 0.09)),
-        ((-0.09, -0.16, 1.08), (0.09, 0.09, 0.08)),
-        ((0.09, -0.16, 1.08), (0.09, 0.09, 0.08)),
-        ((0, -0.26, 1.08), (0.095, 0.11, 0.075)),
-        ((0, -0.37, 1.055), (0.07, 0.10, 0.06)),
-        ((0, -0.30, 1.00), (0.06, 0.10, 0.04)),
-    ]
-    head_patches = [(LIGHT_GOLD, (0, -0.36, 1.03), (0.09, 0.14, 0.08))]
-    head_mesh = sculpt("head", head, coat_materials("head", GOLD, head_patches), head_pivot,
-                       fur=(0.018, 12000, 0.3))
-    add_face(rig, head_mesh, head_pivot, nose_z=1.075, eye_x=0.085, eye_z=1.17, eye_r=0.05)
-    # Long feathered ears reaching down past the jaw
-    rig["ears"] = [drop_ear(side, (side * 0.12, -0.02, 1.25), AMBER, head_pivot, fur=(0.045, 12000, 1.0),
-                            length=1.05, width=0.85) for side in (-1, 1)]
-
-    sombrero((0, -0.05, 1.31), (14, 10, 0), head_pivot)
+    nova_head(rig, head_pivot)
 
     head_pivot.scale = (1.30,) * 3
     if lying:
@@ -741,6 +698,59 @@ def leg(name, top, elements, base, patches, parent):
     pivot = empty(f"{name}_pivot", top, parent)
     sculpt(name, elements, coat_materials(name, base, patches), pivot, fur=(0.022, 7000, 0.5))
     return pivot
+
+
+def millie_head(rig, head_pivot):
+    """Millie's head: tan with a black cap, white blaze and muzzle, long hound ears."""
+    head = [
+        ((0, -0.07, 1.17), (0.23, 0.22, 0.21)),
+        ((0, -0.19, 1.20), (0.16, 0.10, 0.10)),
+        ((-0.12, -0.19, 1.07), (0.10, 0.10, 0.09)),
+        ((0.12, -0.19, 1.07), (0.10, 0.10, 0.09)),
+        ((0, -0.29, 1.05), (0.11, 0.11, 0.08)),
+        ((-0.055, -0.30, 1.00), (0.065, 0.07, 0.055)),
+        ((0.055, -0.30, 1.00), (0.065, 0.07, 0.055)),
+        ((0, -0.24, 0.97), (0.07, 0.07, 0.05)),
+    ]
+    head_patches = [
+        (BLACK, (0, 0.02, 1.36), (0.30, 0.30, 0.17)),
+        (BLACK, (0, 0.14, 1.18), (0.28, 0.12, 0.24)),
+        (TAN, (-0.08, -0.24, 1.30), (0.04, 0.06, 0.028)),
+        (TAN, (0.08, -0.24, 1.30), (0.04, 0.06, 0.028)),
+        (WHITE, (0, -0.28, 1.20), (0.04, 0.12, 0.17)),
+        (WHITE, (0, -0.35, 1.02), (0.13, 0.12, 0.10)),
+        (WHITE, (0, -0.25, 0.96), (0.08, 0.08, 0.06)),
+    ]
+    head_mesh = sculpt("head", head, coat_materials("head", TAN, head_patches), head_pivot,
+                       fur=(0.02, 12000, 0.3))
+
+    add_face(rig, head_mesh, head_pivot, nose_z=1.075, eye_x=0.10, eye_z=1.165, eye_r=0.055,
+             tongue_loc=(0, -0.36, 0.95))
+    # Long, soft hound ears with dark edges
+    rig["ears"] = [drop_ear(side, (side * 0.19, -0.05, 1.27), TAN, head_pivot, fur=(0.022, 12000, 0.6),
+                            tip=(DARK_TAN, (0.12, 0.08, 0.09))) for side in (-1, 1)]
+
+
+def nova_head(rig, head_pivot):
+    """Nova's head: a long golden muzzle, long feathered ears, and her sombrero."""
+    head = [
+        ((0, -0.05, 1.18), (0.19, 0.20, 0.18)),
+        ((0, -0.17, 1.21), (0.13, 0.09, 0.09)),
+        ((-0.09, -0.16, 1.08), (0.09, 0.09, 0.08)),
+        ((0.09, -0.16, 1.08), (0.09, 0.09, 0.08)),
+        ((0, -0.26, 1.08), (0.095, 0.11, 0.075)),
+        ((0, -0.37, 1.055), (0.07, 0.10, 0.06)),
+        ((0, -0.30, 1.00), (0.06, 0.10, 0.04)),
+    ]
+    head_patches = [(LIGHT_GOLD, (0, -0.36, 1.03), (0.09, 0.14, 0.08))]
+    head_mesh = sculpt("head", head, coat_materials("head", GOLD, head_patches), head_pivot,
+                       fur=(0.018, 12000, 0.3))
+    add_face(rig, head_mesh, head_pivot, nose_z=1.075, eye_x=0.085, eye_z=1.17, eye_r=0.05)
+    # Long feathered ears reaching down past the jaw
+    rig["ears"] = [drop_ear(side, (side * 0.12, -0.02, 1.25), AMBER, head_pivot, fur=(0.045, 12000, 1.0),
+                            length=1.05, width=0.85) for side in (-1, 1)]
+
+    sombrero((0, -0.05, 1.31), (14, 10, 0), head_pivot)
 
 
 def ozzie_head(rig, head_pivot, ball):
@@ -1285,5 +1295,7 @@ def main():
         bpy.ops.render.render(animation=True)
 
 
-ARGS = parse_args()
-main()
+# Imported by the rig scripts (ozzie_rig.py), which set ARGS themselves
+if __name__ == "__main__":
+    ARGS = parse_args()
+    main()

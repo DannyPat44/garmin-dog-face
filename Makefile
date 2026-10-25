@@ -7,7 +7,7 @@ DEVICE ?= fr265
 KEY ?= $(HOME)/workspace/garmin/keys/developer_key.der
 APP := Doggos
 
-.PHONY: build run install package art frames preview rig
+.PHONY: build run install package art frames preview rig rig-preview
 
 build:
 	"$(SDK)bin/monkeyc" -f monkey.jungle -d $(DEVICE) -y "$(KEY)" -o bin/$(APP).prg -w
@@ -38,12 +38,10 @@ preview:
 art:
 	tools/build_art.sh
 
-# Skeleton proof of concept: Ozzie sits down. FUR=1 for the full fur render.
-BLENDER ?= /Applications/Blender.app/Contents/MacOS/Blender
+# Dogs on the shared skeleton (tools/blender/dog_rig.py): DOGS and ANIMS narrow it
 rig:
-	rm -rf build/frames/rig_poc
-	"$(BLENDER)" --background --python tools/blender/rig_poc.py -- --out build/frames/rig_poc \
-		$(if $(FUR),--size 400 --samples 40,--no-fur --size 300 --samples 8) > build/render_rig_poc.log
-	ffmpeg -v error -y -framerate 10 -i build/frames/rig_poc/%04d.png -f lavfi -i "color=black:s=$(if $(FUR),400x400,300x300):r=10" \
-		-filter_complex "[1][0]overlay=shortest=1,split[a][b];[a]palettegen[p];[b][p]paletteuse" build/rig_poc.gif
-	@echo "Wrote build/rig_poc.gif"
+	tools/render_rig.sh
+
+# Watch-size GIFs of the skeleton renders, including a walk-in/sit/walk-out story
+rig-preview:
+	tools/preview_rig.sh
