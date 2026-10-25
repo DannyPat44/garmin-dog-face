@@ -63,7 +63,7 @@ def parse_args():
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
     p = argparse.ArgumentParser()
     p.add_argument("--dog", choices=["puppy", "nova", "ozzie"], default="puppy")
-    p.add_argument("--mood", choices=["awake", "happy", "sleepy", "walk"], default="awake")
+    p.add_argument("--mood", choices=["awake", "happy", "sleepy", "walk", "walkin"], default="awake")
     p.add_argument("--out", help="directory for the PNG frame sequence")
     p.add_argument("--still", help="render only frame 1 to this PNG")
     p.add_argument("--size", type=int, default=480)
@@ -686,7 +686,8 @@ def ozzie_head(rig, head_pivot, ball):
     if ball:
         # Held in her mouth, just under the nose; sized to match the ball on
         # the ground once the head is scaled up
-        rig["ball"] = tennis_ball((0, -0.385, 0.975), 0.068, head_pivot)
+        rig["ball_centre"] = Vector((0, -0.385, 0.975))
+        rig["ball"] = tennis_ball(tuple(rig["ball_centre"]), 0.068, head_pivot)
 
 
 DOGS = {"puppy": build_puppy, "nova": build_nova, "ozzie": build_ozzie}
@@ -1073,17 +1074,101 @@ def animate_walk(rig):
     rig["tongue"].hide_render = True
 
 
+# Walk-in timeline (frames): walk at full speed, slow to a stop while turning
+# to face the camera, then dip the head and drop the ball, which bounces and
+# rolls to its spot in the sitting scene. The sit itself is a dissolve to the
+# sitting render, done when the frames are assembled.
+WALK_IN_FRAMES = 46
+WALK_SPEED = 0.036          # world units per frame, matched to the stride
+WALK_START_X = -1.06        # just out of the watch's crop
+SLOW_FROM, STOP_AT = 26, 34
+TURN_FROM, TURN_TO = 26, 36
+DROP_AT = 38
+BALL_REST = Vector((0.33, -0.40, 0.085))
+
+
+def smoothstep(a, b, x):
+    t = min(1.0, max(0.0, (x - a) / (b - a)))
+    return t * t * (3 - 2 * t)
+
+
+def animate_walk_in(rig):
+    scene = bpy.context.scene
+    scene.frame_end = WALK_IN_FRAMES
+    root, head = rig["root"], rig["head"]
+    head_rest = tuple(head.rotation_euler)
+    x, phase = WALK_START_X, 0.0
+    for f in range(1, WALK_IN_FRAMES + 1):
+        if f <= SLOW_FROM:
+            speed = 1.0
+        else:
+            speed = max(0.0, 1 - (f - SLOW_FROM) / (STOP_AT - SLOW_FROM))
+        x += WALK_SPEED * speed
+        phase += speed * STRIDES / FRAMES
+        turn = smoothstep(TURN_FROM, TURN_TO, f)
+
+        for key_, pivot in rig["legs"].items():
+            phi = 2 * math.pi * (phase + WALK_PHASES[key_])
+            key(pivot, "rotation_euler", f, (math.radians(24) * speed * math.sin(phi), 0, 0))
+            key(pivot, "scale", f, (1, 1, 1 - 0.14 * speed * max(0.0, -math.cos(phi))))
+        bob = 0.012 * speed * math.sin(4 * math.pi * phase)
+        key(root, "location", f, (x, 0, bob))
+        key(root, "rotation_euler", f, (0, 0, math.radians(70 - 70 * turn)))
+
+        # Head: looks round at the camera while walking, straightens as the
+        # body turns, then dips to drop the ball
+        dip = math.radians(38) * max(0.0, 1 - abs(f - DROP_AT) / 4) ** 0.7
+        nod = math.radians(3) * speed * math.sin(4 * math.pi * phase + 1)
+        key(head, "rotation_euler", f, (head_rest[0] + nod + dip, head_rest[1],
+                                        head_rest[2] + math.radians(35) * turn))
+        key(rig["tail"], "rotation_euler", f, (0, 0, math.radians(18) * math.sin(2 * math.pi * phase)
+                                                + math.radians(25) * (1 - speed) * wave(f, 4)))
+        for i, ear in enumerate(rig["ears"]):
+            key(ear, "rotation_euler", f, (0, math.radians(4) * speed * math.sin(4 * math.pi * phase + i), 0))
+
+    # Swap the ball in her mouth for a loose one at the moment she lets go
+    held = rig["ball"]
+    scene.frame_set(DROP_AT)
+    start = held.matrix_world @ rig["ball_centre"]
+    loose = tennis_ball((0, 0, 0), 0.085)
+    for f in range(1, WALK_IN_FRAMES + 1):
+        held.hide_render = f >= DROP_AT
+        held.keyframe_insert("hide_render", frame=f)
+        loose.hide_render = f < DROP_AT
+        loose.keyframe_insert("hide_render", frame=f)
+        if f < DROP_AT:
+            pos, spin = start, 0.0
+        elif f <= DROP_AT + 3:
+            # Falls straight down
+            t = (f - DROP_AT) / 3
+            pos = Vector((start.x, start.y, start.z + (BALL_REST.z - start.z) * t * t))
+            spin = 0.0
+        else:
+            # Little bounce while it rolls to its resting place
+            t = smoothstep(DROP_AT + 3, WALK_IN_FRAMES - 2, f)
+            ground = start.lerp(BALL_REST, t)
+            hop = 0.06 * max(0.0, math.sin(math.pi * (f - DROP_AT - 3) / 4)) if f < DROP_AT + 7 else 0.0
+            pos = Vector((ground.x, ground.y, BALL_REST.z + hop))
+            spin = (ground.xy - start.xy).length / 0.085
+        key(loose, "location", f, tuple(pos))
+        roll_axis = (BALL_REST.xy - start.xy).normalized()
+        key(loose, "rotation_euler", f, (-roll_axis.y * spin, roll_axis.x * spin, 0))
+    rig["tongue"].hide_render = True
+
+
 def main():
     bpy.ops.wm.read_factory_settings(use_empty=True)
     # Every frame is keyed, so linear keys reproduce the curves exactly
     bpy.context.preferences.edit.keyframe_new_interpolation_type = "LINEAR"
     setup_scene(ARGS.size, ARGS.samples)
-    pose = {"sleepy": "lying", "walk": "walking"}.get(ARGS.mood, "sitting")
+    pose = {"sleepy": "lying", "walk": "walking", "walkin": "walking"}.get(ARGS.mood, "sitting")
     rig = DOGS[ARGS.dog](pose)
     build_ground(ball=ARGS.dog == "ozzie" and pose != "walking")
     zzz = build_zzz()
     if ARGS.mood == "walk":
         animate_walk(rig)
+    elif ARGS.mood == "walkin":
+        animate_walk_in(rig)
     else:
         animate(rig, ARGS.mood, zzz)
     for z in zzz:
