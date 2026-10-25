@@ -57,7 +57,8 @@ SPECS = {
         "leg": 1.0,
         "coat": (dog.RED, [
             (dog.DARK_RED, (0, 0.05, 0.57), (0.18, 0.32, 0.08)),
-            (dog.WHITE, (0, -0.30, 0.44), (0.10, 0.10, 0.15)),
+            # White bib up the front of the chest to the throat, as in her sitting render
+            (dog.WHITE, (0, -0.33, 0.50), (0.11, 0.12, 0.21)),
             (dog.WHITE, (0, -0.02, 0.29), (0.12, 0.24, 0.06)),
         ]),
         "socks": dog.WHITE,
@@ -624,8 +625,9 @@ class WalkIn:
         phase = sum(self.speeds[:f]) / STRIDE
         amount = min(1.0, self.speeds[f - 1] / WALK_SPEED * 1.4)
         pose = add(dog_pose(self.rig, "stand"), walk_offsets(phase, amount))
-        # Dip to drop the ball, then look up
+        # Dip to drop the ball (if she has one), then look up
         dip = ease(self.DIP_FROM, self.DROP_AT, f) - ease(self.DROP_AT, self.DIP_TO, f)
+        dip *= 1 if self.ball is not None else 0
         pose = add(pose, {"neck": (18 * dip, 0, 0), "chest": (4 * dip, 0, 0)})
         sit = ease(self.SIT_FROM, self.SIT_TO, f)
         pose = blend(pose, dog_pose(self.rig, "sit"), sit)
@@ -676,7 +678,7 @@ def ball_rest(rig, ball):
 
 class WalkOut:
     """Stands up, steps to the ball and picks it up, turns and walks off."""
-    FRAMES = 80
+    FRAMES = 72
     STAND_FROM, STAND_TO = 5, 15
     STEP_FROM, STEP_TO = 14, 24
     DIP_FROM, PICK_AT, DIP_TO = 22, 26, 31
@@ -718,6 +720,7 @@ class WalkOut:
             pose = blend(dog_pose(rig, "sit"),
                          add(dog_pose(rig, "stand"), walk_offsets(distance / STRIDE, amount)), stand)
             dip = ease(self.DIP_FROM, self.PICK_AT, f) - ease(self.PICK_AT, self.DIP_TO, f)
+            dip *= 1 if self.ball is not None else 0
             pose = add(pose, {k: tuple(a * dip for a in v) for k, v in self.DIP.items()})
             pose = add(pose, {"tail1": (0, 0, 16 * math.sin(f * 1.1) * stand)})
             key_pose(rig, pose, f)
