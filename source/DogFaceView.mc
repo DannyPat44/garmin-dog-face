@@ -25,8 +25,9 @@ class DogAnimationDelegate extends WatchUi.AnimationDelegate {
     }
 }
 
-// Watch face with three animated 3D dogs (Millie, Nova and Ozzie) taking
-// turns: a different dog, picked at random, each hour. Her mood follows the
+// Watch face with animated 3D dogs (Millie, Nova and Ozzie; the list is
+// generated into Dogs.mc) taking turns: a different dog, picked at random,
+// each hour. Her mood follows the
 // day: sleepy overnight, happy once the step goal is met, awake otherwise.
 // Dogs only swap while the screen is off, so nobody sees the change.
 // The animation loops while the screen is awake (the system stops it when
@@ -64,17 +65,9 @@ class DogFaceView extends WatchUi.WatchFace {
         var settings = System.getDeviceSettings();
         _burnInProtection = (settings has :requiresBurnInProtection) && settings.requiresBurnInProtection;
         Math.srand(Time.now().value() + System.getTimer());
-        _dog = Math.rand() % 3;
-        _stills = [
-            [Rez.Drawables.MillieAwake, Rez.Drawables.MillieHappy, Rez.Drawables.MillieSleepy],
-            [Rez.Drawables.NovaAwake, Rez.Drawables.NovaHappy, Rez.Drawables.NovaSleepy],
-            [Rez.Drawables.OzzieAwake, Rez.Drawables.OzzieHappy, Rez.Drawables.OzzieSleepy],
-        ];
-        _animations = [
-            [Rez.Drawables.MillieAwakeAnimation, Rez.Drawables.MillieHappyAnimation, Rez.Drawables.MillieSleepyAnimation],
-            [Rez.Drawables.NovaAwakeAnimation, Rez.Drawables.NovaHappyAnimation, Rez.Drawables.NovaSleepyAnimation],
-            [Rez.Drawables.OzzieAwakeAnimation, Rez.Drawables.OzzieHappyAnimation, Rez.Drawables.OzzieSleepyAnimation],
-        ];
+        _stills = dogStills();
+        _animations = dogAnimations();
+        _dog = Math.rand() % _stills.size();
     }
 
     function onLayout(dc as Dc) as Void {
@@ -221,7 +214,10 @@ class DogFaceView extends WatchUi.WatchFace {
             return;
         }
         _dogHour = hour;
-        _dog = (_dog + 1 + Math.rand() % 2) % 3;
+        var count = _stills.size();
+        if (count > 1) {
+            _dog = (_dog + 1 + Math.rand() % (count - 1)) % count;
+        }
         setMood(currentMood(System.getClockTime(), ActivityMonitor.getInfo()));
     }
 

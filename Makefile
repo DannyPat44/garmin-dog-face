@@ -7,7 +7,7 @@ DEVICE ?= fr265
 KEY ?= $(HOME)/workspace/garmin/keys/developer_key.der
 APP := DogFace
 
-.PHONY: build run install package art
+.PHONY: build run install package art frames preview rig
 
 build:
 	"$(SDK)bin/monkeyc" -f monkey.jungle -d $(DEVICE) -y "$(KEY)" -o bin/$(APP).prg -w
@@ -25,7 +25,25 @@ install: build
 package:
 	"$(SDK)bin/monkeyc" -f monkey.jungle -e -r -y "$(KEY)" -o bin/$(APP).iq
 
-# Rendering takes ~12 minutes; build_art alone re-encodes existing frames
-art:
+# Rendering every dog and mood takes ~30 minutes; DOGS and MOODS narrow it,
+# e.g. make frames DOGS=nova MOODS=happy
+frames:
 	tools/render_frames.sh
+
+# Watch-size review GIFs of the rendered frames, in build/review/
+preview:
+	tools/preview_gifs.sh
+
+# Re-encode rendered frames into the watch resources and source/Dogs.mc
+art:
 	tools/build_art.sh
+
+# Skeleton proof of concept: Ozzie sits down. FUR=1 for the full fur render.
+BLENDER ?= /Applications/Blender.app/Contents/MacOS/Blender
+rig:
+	rm -rf build/frames/rig_poc
+	"$(BLENDER)" --background --python tools/blender/rig_poc.py -- --out build/frames/rig_poc \
+		$(if $(FUR),--size 400 --samples 40,--no-fur --size 300 --samples 8) > build/render_rig_poc.log
+	ffmpeg -v error -y -framerate 10 -i build/frames/rig_poc/%04d.png -f lavfi -i "color=black:s=$(if $(FUR),400x400,300x300):r=10" \
+		-filter_complex "[1][0]overlay=shortest=1,split[a][b];[a]palettegen[p];[b][p]paletteuse" build/rig_poc.gif
+	@echo "Wrote build/rig_poc.gif"
