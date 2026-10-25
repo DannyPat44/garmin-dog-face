@@ -1,7 +1,10 @@
-"""Build and render the fluffy puppy in Blender.
+"""Build and render the dogs in Blender.
 
-Modelled on the tri-colour hound puppy in the reference photo: black saddle,
-tan face and legs, white blaze, chest and paws, tan eyebrow dots, floppy ears.
+    puppy  tri-colour hound puppy: black saddle, tan face and legs, white blaze,
+           chest and paws, tan eyebrow dots, floppy ears
+    nova   golden long-haired dachshund with silky feathered ears and tail
+    ozzie  red cattle dog mix: ginger with white markings, one pricked ear and
+           one folded, bushy banded tail, black collar
 
 The body and head are sculpted from metaballs (smoothly blended shapes) and
 converted to meshes, then covered in soft particle fur shaded with the
@@ -12,7 +15,7 @@ procedural textures (iris and pupil, bumpy nose leather).
 Run headless, one mood per invocation:
 
     Blender --background --python tools/blender/dog.py -- --mood awake --out build/frames/awake
-    Blender --background --python tools/blender/dog.py -- --mood awake --still build/awake.png
+    Blender --background --python tools/blender/dog.py -- --dog nova --mood awake --still build/nova.png
 
 Moods: awake (head tilt, blink, tail wag), happy (tongue out, bounce, fast wag),
 sleepy (lying down, slow breathing, rising Zzz). Every animation is FRAMES long
@@ -37,6 +40,15 @@ DARK_TAN = (0.10, 0.04, 0.015)
 NOSE = (0.012, 0.010, 0.010)
 IRIS = (0.05, 0.020, 0.008)
 TONGUE = (0.80, 0.25, 0.30)
+# Nova, golden long-haired dachshund
+GOLD = (0.60, 0.38, 0.16)
+LIGHT_GOLD = (0.72, 0.52, 0.28)
+CREAM = (0.78, 0.62, 0.40)
+AMBER = (0.24, 0.11, 0.035)
+# Ozzie, red cattle dog mix
+RED = (0.42, 0.17, 0.06)
+DARK_RED = (0.15, 0.06, 0.025)
+EAR_DARK = (0.07, 0.03, 0.015)
 STONE = (0.10, 0.13, 0.17)
 BALL = (0.50, 0.70, 0.05)
 ZZZ = (0.04, 0.22, 1.0)
@@ -45,6 +57,7 @@ ZZZ = (0.04, 0.22, 1.0)
 def parse_args():
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
     p = argparse.ArgumentParser()
+    p.add_argument("--dog", choices=["puppy", "nova", "ozzie"], default="puppy")
     p.add_argument("--mood", choices=["awake", "happy", "sleepy"], default="awake")
     p.add_argument("--out", help="directory for the PNG frame sequence")
     p.add_argument("--still", help="render only frame 1 to this PNG")
@@ -342,8 +355,8 @@ def add_fur(obj, hair_mat, length, density, droop=0.4):
 
 # --- the dog ---------------------------------------------------------------
 
-def build_dog(pose):
-    """Sculpt the puppy. The head is modelled around a pivot at (0, -0.05, 0.95)
+def build_puppy(pose):
+    """Sculpt the tri-colour hound puppy. The head is modelled around a pivot at (0, -0.05, 0.95)
     and then scaled up and moved onto the neck; the sleepy pose lies the body
     down and rests the head on the front paws."""
     lying = pose == "lying"
@@ -437,41 +450,11 @@ def build_dog(pose):
     head_mesh = sculpt("head", head, coat_materials("head", TAN, head_patches), head_pivot,
                        fur=(0.02, 12000, 0.3))
 
-    # Nose and eyes sit on the sculpted surface, found by ray casting
-    nose_z = 1.075
-    nose_y = (surface_y(head_mesh, 0, nose_z) or -0.40) - 0.01
-    nose = [((0, nose_y, nose_z), (0.06, 0.04, 0.04)),
-            ((-0.022, nose_y - 0.008, nose_z - 0.006), (0.035, 0.03, 0.03)),
-            ((0.022, nose_y - 0.008, nose_z - 0.006), (0.035, 0.03, 0.03))]
-    sculpt("nose", nose, [nose_material()], head_pivot, resolution=0.006)
-
-    eye_r = 0.055
-    eye_mat = eye_material(eye_r)
-    sparkle = emissive_material("sparkle", (1, 1, 1), 2.0)
-    rig["eyes"] = []
-    for side in (-1, 1):
-        ex, ez = side * 0.10, 1.165
-        ey = (surface_y(head_mesh, ex, ez) or -0.30) + eye_r * 0.15
-        eye = blob(f"eye{side}", (ex, ey, ez), (eye_r, eye_r * 0.8, eye_r), eye_mat, head_pivot)
-        blob(f"sparkle{side}", (ex - 0.016, ey - eye_r * 0.78, ez + 0.018), (0.008, 0.004, 0.008), sparkle, eye, segments=16)
-        rig["eyes"].append(eye)
-
-    # Long, soft hound ears: a narrow top melting into a wide rounded flap
-    rig["ears"] = []
-    for side in (-1, 1):
-        px, pz = side * 0.19, 1.27
-        pivot = empty(f"ear_pivot{side}", (px, -0.05, pz), head_pivot)
-        x = px + side * 0.04
-        ear = [((x, -0.04, pz - 0.04), (0.06, 0.03, 0.07)),
-               ((x + side * 0.03, -0.05, pz - 0.18), (0.10, 0.03, 0.13)),
-               ((x + side * 0.05, -0.06, pz - 0.30), (0.09, 0.03, 0.09))]
-        ear = [(c, s, (0, side * -10, 0)) for c, s in ear]
-        tip = (x + side * 0.05, -0.06, pz - 0.36)
-        sculpt(f"ear{side}", ear, coat_materials(f"ear{side}", TAN, [(DARK_TAN, tip, (0.12, 0.08, 0.09))]),
-               pivot, fur=(0.022, 12000, 0.6))
-        rig["ears"].append(pivot)
-
-    rig["tongue"] = blob("tongue", (0, -0.36, 0.95), (0.04, 0.025, 0.055), glossy_material("tongue", TONGUE, 0.3, 0.3), head_pivot)
+    add_face(rig, head_mesh, head_pivot, nose_z=1.075, eye_x=0.10, eye_z=1.165, eye_r=0.055,
+             tongue_loc=(0, -0.36, 0.95))
+    # Long, soft hound ears with dark edges
+    rig["ears"] = [drop_ear(side, (side * 0.19, -0.05, 1.27), TAN, head_pivot, fur=(0.022, 12000, 0.6),
+                            tip=(DARK_TAN, (0.12, 0.08, 0.09))) for side in (-1, 1)]
 
     head_pivot.scale = (1.42,) * 3
     if lying:
@@ -483,6 +466,221 @@ def build_dog(pose):
         head_pivot.location = (0, -0.05, 0.70)
         head_pivot.rotation_euler = (0, math.radians(6), 0)
     return rig
+
+
+def build_nova(pose):
+    """Nova: a golden long-haired dachshund. Sitting up on a long chest with
+    short legs, a long narrow muzzle, and long silky feathered ears and tail."""
+    require_sitting("nova", pose)
+    root = empty("root", (0, 0, 0))
+    rig = {"root": root}
+    body = [
+        ((0, 0.01, 0.43), (0.22, 0.21, 0.26), (-10, 0, 0)),
+        ((0, 0.12, 0.18), (0.24, 0.26, 0.15)),
+        ((0, -0.05, 0.66), (0.15, 0.14, 0.13)),
+    ]
+    for side in (-1, 1):
+        body += [
+            ((side * 0.16, 0.14, 0.14), (0.12, 0.16, 0.11)),
+            ((side * 0.09, -0.15, 0.11), (0.055, 0.055, 0.09)),
+            ((side * 0.09, -0.20, 0.035), (0.06, 0.08, 0.035)),
+            ((side * 0.21, -0.04, 0.035), (0.055, 0.09, 0.035)),
+        ]
+    body_patches = [
+        (CREAM, (0, -0.18, 0.45), (0.12, 0.10, 0.28)),
+        (CREAM, (0, -0.10, 0.66), (0.08, 0.07, 0.11)),
+    ]
+    # Silky coat that lies flat; the long feathering is on the ears and tail
+    rig["torso"] = sculpt("body", body, coat_materials("body", GOLD, body_patches), root,
+                          fur=(0.032, 7000, 0.8))
+
+    tail_root = empty("tail_root", (0.10, 0.30, 0.08), root)
+    rig["tail"] = tail_root
+    base = Vector(tail_root.location)
+    tail = [(tuple(base + Vector(d)), (0.045, 0.045, 0.05)) for d in
+            [(0.0, 0.0, 0.0), (0.05, 0.02, 0.0), (0.10, 0.04, 0.02), (0.15, 0.04, 0.04),
+             (0.20, 0.02, 0.07), (0.25, -0.01, 0.10)]]
+    sculpt("tail", tail, coat_materials("tail", GOLD), tail_root, fur=(0.08, 9000, 0.7))
+
+    head_pivot = empty("head_pivot", (0, -0.05, 0.95), root)
+    rig["head"] = head_pivot
+    head = [
+        ((0, -0.05, 1.18), (0.19, 0.20, 0.18)),
+        ((0, -0.17, 1.21), (0.13, 0.09, 0.09)),
+        ((-0.09, -0.16, 1.08), (0.09, 0.09, 0.08)),
+        ((0.09, -0.16, 1.08), (0.09, 0.09, 0.08)),
+        ((0, -0.26, 1.08), (0.095, 0.11, 0.075)),
+        ((0, -0.37, 1.055), (0.07, 0.10, 0.06)),
+        ((0, -0.30, 1.00), (0.06, 0.10, 0.04)),
+    ]
+    head_patches = [(LIGHT_GOLD, (0, -0.36, 1.03), (0.09, 0.14, 0.08))]
+    head_mesh = sculpt("head", head, coat_materials("head", GOLD, head_patches), head_pivot,
+                       fur=(0.018, 12000, 0.3))
+    add_face(rig, head_mesh, head_pivot, nose_z=1.075, eye_x=0.085, eye_z=1.17, eye_r=0.05)
+    # Long feathered ears reaching down past the jaw
+    rig["ears"] = [drop_ear(side, (side * 0.12, -0.02, 1.25), AMBER, head_pivot, fur=(0.045, 12000, 1.0),
+                            length=1.05, width=0.85) for side in (-1, 1)]
+
+    head_pivot.scale = (1.35,) * 3
+    head_pivot.location = (0, -0.07, 0.74)
+    head_pivot.rotation_euler = (0, math.radians(6), math.radians(-18))
+    return rig
+
+
+def build_ozzie(pose):
+    """Ozzie: a red Australian cattle dog mix. Lean and leggy, ginger with a
+    darker saddle, white blaze, muzzle, chest and legs, one pricked ear and one
+    folded, a bushy banded tail with a white tip, and a black collar."""
+    require_sitting("ozzie", pose)
+    root = empty("root", (0, 0, 0))
+    rig = {"root": root}
+    body = [
+        ((0, 0.03, 0.45), (0.19, 0.18, 0.26), (-8, 0, 0)),
+        ((0, 0.10, 0.21), (0.20, 0.21, 0.14)),
+        ((0, -0.04, 0.68), (0.14, 0.13, 0.13)),
+    ]
+    for side in (-1, 1):
+        body += [
+            ((side * 0.14, 0.10, 0.17), (0.10, 0.16, 0.13)),
+            ((side * 0.085, -0.12, 0.22), (0.05, 0.05, 0.20)),
+            ((side * 0.085, -0.17, 0.04), (0.055, 0.08, 0.04)),
+            ((side * 0.19, -0.05, 0.04), (0.055, 0.09, 0.04)),
+        ]
+    body_patches = [
+        (DARK_RED, (0, 0.18, 0.55), (0.22, 0.14, 0.24)),
+        (WHITE, (0, -0.16, 0.45), (0.10, 0.10, 0.27)),
+        (WHITE, (0, -0.12, 0.68), (0.08, 0.07, 0.12)),
+    ]
+    for side in (-1, 1):
+        body_patches += [
+            (WHITE, (side * 0.085, -0.15, 0.13), (0.08, 0.09, 0.15)),
+            (WHITE, (side * 0.19, -0.05, 0.04), (0.08, 0.12, 0.06)),
+        ]
+    rig["torso"] = sculpt("body", body, coat_materials("body", RED, body_patches), root,
+                          fur=(0.03, 7000, 0.5))
+    collar((0, -0.06, 0.72), 0.19, -22, root)
+
+    # Bushy tail curling up, with a dark band and a white tip
+    tail_root = empty("tail_root", (0.12, 0.24, 0.10), root)
+    rig["tail"] = tail_root
+    base = Vector(tail_root.location)
+    steps = [(0.0, 0.0, 0.0), (0.05, 0.02, 0.01), (0.10, 0.03, 0.04), (0.15, 0.02, 0.08),
+             (0.19, 0.0, 0.13), (0.22, -0.03, 0.19), (0.23, -0.06, 0.24), (0.23, -0.08, 0.28)]
+    tail = [(tuple(base + Vector(d)), (0.055, 0.055, 0.06)) for d in steps]
+    tail_patches = [(EAR_DARK, tuple(base + Vector(steps[5])), (0.08, 0.08, 0.05)),
+                    (WHITE, tuple(base + Vector(steps[7])), (0.07, 0.07, 0.06))]
+    sculpt("tail", tail, coat_materials("tail", RED, tail_patches), tail_root, fur=(0.06, 9000, 0.3))
+
+    head_pivot = empty("head_pivot", (0, -0.05, 0.95), root)
+    rig["head"] = head_pivot
+    head = [
+        ((0, -0.04, 1.18), (0.20, 0.19, 0.18)),
+        ((0, -0.16, 1.21), (0.14, 0.09, 0.09)),
+        ((-0.10, -0.14, 1.09), (0.10, 0.09, 0.09)),
+        ((0.10, -0.14, 1.09), (0.10, 0.09, 0.09)),
+        ((0, -0.24, 1.08), (0.10, 0.11, 0.08)),
+        ((0, -0.35, 1.05), (0.07, 0.10, 0.06)),
+        ((0, -0.28, 1.00), (0.06, 0.09, 0.04)),
+    ]
+    head_patches = [
+        (DARK_RED, (0, 0.05, 1.36), (0.26, 0.26, 0.12)),
+        (WHITE, (0, -0.22, 1.22), (0.035, 0.12, 0.17)),
+        (WHITE, (0, -0.36, 1.03), (0.10, 0.14, 0.09)),
+        (WHITE, (0, -0.22, 0.97), (0.08, 0.10, 0.06)),
+    ]
+    head_mesh = sculpt("head", head, coat_materials("head", RED, head_patches), head_pivot,
+                       fur=(0.016, 12000, 0.3))
+    add_face(rig, head_mesh, head_pivot, nose_z=1.07, eye_x=0.095, eye_z=1.17, eye_r=0.048)
+    rig["ears"] = [prick_ear(1, (0.13, -0.02, 1.30), head_pivot),
+                   folded_ear(-1, (-0.13, -0.02, 1.30), head_pivot)]
+
+    head_pivot.scale = (1.32,) * 3
+    head_pivot.location = (0, -0.06, 0.70)
+    head_pivot.rotation_euler = (0, math.radians(6), 0)
+    return rig
+
+
+DOGS = {"puppy": build_puppy, "nova": build_nova, "ozzie": build_ozzie}
+
+
+def require_sitting(name, pose):
+    if pose != "sitting":
+        sys.exit(f"{name}: only the sitting pose is modelled so far")
+
+
+def add_face(rig, head_mesh, head_pivot, nose_z, eye_x, eye_z, eye_r, tongue_loc=None):
+    """Nose and eyes placed on the sculpted head by ray casting, plus the
+    tongue (shown only when happy) just under the nose."""
+    nose_y = (surface_y(head_mesh, 0, nose_z) or -0.40) - 0.01
+    nose = [((0, nose_y, nose_z), (0.06, 0.04, 0.04)),
+            ((-0.022, nose_y - 0.008, nose_z - 0.006), (0.035, 0.03, 0.03)),
+            ((0.022, nose_y - 0.008, nose_z - 0.006), (0.035, 0.03, 0.03))]
+    sculpt("nose", nose, [nose_material()], head_pivot, resolution=0.006)
+
+    eye_mat = eye_material(eye_r)
+    sparkle = emissive_material("sparkle", (1, 1, 1), 2.0)
+    rig["eyes"] = []
+    for side in (-1, 1):
+        ex = side * eye_x
+        ey = (surface_y(head_mesh, ex, eye_z) or -0.30) + eye_r * 0.15
+        eye = blob(f"eye{side}", (ex, ey, eye_z), (eye_r, eye_r * 0.8, eye_r), eye_mat, head_pivot)
+        blob(f"sparkle{side}", (ex - 0.016, ey - eye_r * 0.78, eye_z + 0.018), (0.008, 0.004, 0.008), sparkle, eye, segments=16)
+        rig["eyes"].append(eye)
+
+    tongue_loc = tongue_loc or (0, nose_y + 0.04, nose_z - 0.125)
+    rig["tongue"] = blob("tongue", tongue_loc, (0.04, 0.025, 0.055), glossy_material("tongue", TONGUE, 0.3, 0.3), head_pivot)
+
+
+def drop_ear(side, pivot_loc, color, head_pivot, fur, length=1.0, width=1.0, tip=None):
+    """A soft hanging ear: a narrow top melting into a wide rounded flap.
+    tip is an optional (colour, radii) patch at the bottom edge."""
+    px, py, pz = pivot_loc
+    pivot = empty(f"ear_pivot{side}", pivot_loc, head_pivot)
+    x = px + side * 0.04 * width
+    ear = [((x, py + 0.01, pz - 0.04 * length), (0.06 * width, 0.03, 0.07 * length)),
+           ((x + side * 0.03 * width, py, pz - 0.18 * length), (0.10 * width, 0.03, 0.13 * length)),
+           ((x + side * 0.05 * width, py - 0.01, pz - 0.30 * length), (0.09 * width, 0.03, 0.09 * length))]
+    ear = [(c, s, (0, side * -10, 0)) for c, s in ear]
+    patches = []
+    if tip:
+        patches = [(tip[0], (x + side * 0.05 * width, py - 0.01, pz - 0.36 * length), tip[1])]
+    sculpt(f"ear{side}", ear, coat_materials(f"ear{side}", color, patches), pivot, fur=fur)
+    return pivot
+
+
+def prick_ear(side, pivot_loc, head_pivot):
+    """An upright, pointed ear with a dark tip, leaning a little outward."""
+    px, py, pz = pivot_loc
+    pivot = empty(f"ear_pivot{side}", pivot_loc, head_pivot)
+    ear = [((px, py, pz + 0.02), (0.075, 0.03, 0.06)),
+           ((px + side * 0.02, py, pz + 0.09), (0.055, 0.025, 0.055)),
+           ((px + side * 0.035, py, pz + 0.15), (0.03, 0.02, 0.04))]
+    ear = [(c, s, (0, side * 15, 0)) for c, s in ear]
+    patches = [(EAR_DARK, (px + side * 0.035, py, pz + 0.18), (0.05, 0.05, 0.05))]
+    sculpt(f"ear{side}", ear, coat_materials(f"ear{side}", RED, patches), pivot, fur=(0.015, 12000, 0.2))
+    return pivot
+
+
+def folded_ear(side, pivot_loc, head_pivot):
+    """An ear that stands up at the base and folds forward and down."""
+    px, py, pz = pivot_loc
+    pivot = empty(f"ear_pivot{side}", pivot_loc, head_pivot)
+    ear = [((px, py, pz + 0.03), (0.075, 0.03, 0.06)),
+           ((px + side * 0.05, py - 0.06, pz + 0.04), (0.065, 0.03, 0.06), (-40, 0, 0)),
+           ((px + side * 0.08, py - 0.11, pz - 0.03), (0.05, 0.025, 0.05), (-70, 0, 0))]
+    sculpt(f"ear{side}", ear, coat_materials(f"ear{side}", EAR_DARK), pivot, fur=(0.015, 12000, 0.4))
+    return pivot
+
+
+def collar(loc, radius, tilt, parent):
+    bpy.ops.mesh.primitive_torus_add(major_radius=radius, minor_radius=0.028, location=loc,
+                                     rotation=(math.radians(tilt), 0, 0), major_segments=64, minor_segments=16)
+    obj = bpy.context.active_object
+    obj.name = "collar"
+    bpy.ops.object.shade_smooth()
+    obj.data.materials.append(glossy_material("collar", NOSE, 0.45, 0.2))
+    set_parent(obj, parent)
+    return obj
 
 
 def build_ground():
@@ -624,7 +822,7 @@ def main():
     # Every frame is keyed, so linear keys reproduce the curves exactly
     bpy.context.preferences.edit.keyframe_new_interpolation_type = "LINEAR"
     setup_scene(ARGS.size, ARGS.samples)
-    rig = build_dog("lying" if ARGS.mood == "sleepy" else "sitting")
+    rig = DOGS[ARGS.dog]("lying" if ARGS.mood == "sleepy" else "sitting")
     build_ground()
     zzz = build_zzz()
     animate(rig, ARGS.mood, zzz)
