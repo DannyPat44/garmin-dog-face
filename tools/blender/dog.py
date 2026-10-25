@@ -774,15 +774,14 @@ def ozzie_head(rig, head_pivot, ball):
     ]
     head_mesh = sculpt("head", head, coat_materials("head", RED, head_patches), head_pivot,
                        fur=(0.016, 12000, 0.3))
-    # Her muzzle is narrow and pointed, so the nose is smaller and set in
-    add_face(rig, head_mesh, head_pivot, nose_z=1.075, eye_x=0.095, eye_z=1.17, eye_r=0.048, nose_size=0.68)
+    add_face(rig, head_mesh, head_pivot, nose_z=1.07, eye_x=0.095, eye_z=1.17, eye_r=0.048)
     rig["ears"] = [prick_ear(1, (0.13, -0.02, 1.30), head_pivot),
                    folded_ear(-1, (-0.13, -0.02, 1.30), head_pivot)]
     if ball:
         # Held in her mouth, just under the nose; sized to match the ball on
         # the ground once the head is scaled up
         rig["ball_centre"] = Vector((0, -0.385, 0.975))
-        rig["ball"] = tennis_ball(tuple(rig["ball_centre"]), 0.068, head_pivot)
+        rig["ball"] = tennis_ball(tuple(rig["ball_centre"]), 0.0644, head_pivot)
 
 
 DOGS = {"puppy": build_puppy, "nova": build_nova, "ozzie": build_ozzie}
@@ -961,25 +960,40 @@ def sombrero(loc, rot, parent):
     return pivot
 
 
-def name_collar(text, loc, radius, tilt, color, parent):
+def name_collar(text, loc, radius, tilt, color, parent, band=0.035, letters=0.062):
     """A flat collar band with the dog's name in raised white letters across
-    the front. tilt (degrees) tips the front down onto the chest."""
+    the front, or a round gold tag if there's no name. tilt (degrees) tips the
+    front down onto the chest; band is the band's thickness and letters their
+    height."""
     pivot = empty("collar", loc)
     pivot.rotation_euler = (math.radians(tilt), 0, 0)
-    bpy.ops.mesh.primitive_torus_add(major_radius=radius, minor_radius=0.035, major_segments=96, minor_segments=16)
-    band = bpy.context.active_object
-    band.name = "collar_band"
-    band.scale = (1, 1, 1.6)
+    bpy.ops.mesh.primitive_torus_add(major_radius=radius, minor_radius=band, major_segments=96, minor_segments=16)
+    strap = bpy.context.active_object
+    strap.name = "collar_band"
+    strap.scale = (1, 1, 1.6)
     bpy.ops.object.transform_apply(scale=True)
     bpy.ops.object.shade_smooth()
-    band.data.materials.append(glossy_material("collar_band", color, 0.4, 0.3))
-    band.parent = pivot
+    strap.data.materials.append(glossy_material("collar_band", color, 0.4, 0.3))
+    strap.parent = pivot
+
+    if not text:
+        # A tag hanging at the front
+        bpy.ops.mesh.primitive_cylinder_add(radius=band * 1.5, depth=band * 0.5, vertices=32)
+        tag = bpy.context.active_object
+        tag.name = "collar_tag"
+        tag.location = (0, -(radius + band * 0.9), -band * 1.9)
+        tag.rotation_euler = (math.radians(90), 0, 0)
+        bpy.ops.object.shade_smooth()
+        tag.data.materials.append(glossy_material("collar_tag", (0.8, 0.55, 0.15), 0.25, 0.5))
+        tag.parent = pivot
+        set_parent(pivot, parent)
+        return pivot
 
     letter_mat = emissive_material("collar_letters", (1, 1, 1), 0.6)
     # Fredoka (same as the clock) has a flagged 1 that can't be mistaken for an l
     font = bpy.data.fonts.load(str(Path(__file__).resolve().parents[1] / "fonts/Fredoka.ttf"))
-    size = 0.062
-    step = size * 0.70 / (radius + 0.035)
+    size = letters
+    step = size * 0.70 / (radius + band)
     for i, ch in enumerate(text):
         a = (i - (len(text) - 1) / 2) * step
         bpy.ops.object.text_add()
@@ -992,7 +1006,7 @@ def name_collar(text, loc, radius, tilt, color, parent):
         letter.data.align_x = "CENTER"
         letter.data.align_y = "CENTER"
         letter.data.materials.append(letter_mat)
-        r = radius + 0.036
+        r = radius + band + 0.001
         letter.location = (r * math.sin(a), -r * math.cos(a), 0)
         letter.rotation_euler = (math.radians(90), 0, a)
         letter.parent = pivot

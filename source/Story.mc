@@ -59,6 +59,18 @@ class Story {
         }
     }
 
+    //! The dogs on the watch changed and she's no longer one of them: she
+    //! walks out and `dog` walks in, unless she's asleep (the morning
+    //! handover swaps her then)
+    public function swapTo(dog as Number) as Void {
+        if (_mood == SLEEPY || dog == _dog) {
+            return;
+        }
+        _queue.add([_dog, WALK_OUT]);
+        _queue.add([dog, WALK_IN]);
+        _dog = dog;
+    }
+
     //! The next clip to play as [dog, clip]: the queue, then the mood loop
     public function next() as [Number, Number] {
         if (_queue.size() > 0) {

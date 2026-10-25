@@ -2,6 +2,11 @@
 import Toybox.Lang;
 import Toybox.WatchUi;
 
+// The dogs' names, for the settings
+function dogNames() as Array<String> {
+    return [ "Millie", "Nova", "Ozzie", ];
+}
+
 // [dog][mood], moods in the order awake happy sleepy
 function dogStills() as Array<Array<ResourceId> > {
     return [

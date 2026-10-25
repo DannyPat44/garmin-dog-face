@@ -110,3 +110,27 @@ function storyWalksFillTheScreen(logger as Logger) as Boolean {
     Test.assert(!Story.fillsScreen(Story.GET_UP));
     return true;
 }
+
+(:test)
+function storySwapsADogSwitchedOffStraightAway(logger as Logger) as Boolean {
+    var story = new Story(0, Story.AWAKE, 9);
+    storyClips(story);
+    story.swapTo(2);
+    Test.assert(sameClips(storyClips(story), [[0, Story.WALK_OUT], [2, Story.WALK_IN]]));
+    // The same hour, so no second swap
+    story.update(9, Story.AWAKE, 2);
+    Test.assert(!story.isTelling());
+    return true;
+}
+
+(:test)
+function storyLeavesASleepingDogSwitchedOffUntilMorning(logger as Logger) as Boolean {
+    var story = new Story(0, Story.SLEEPY, 23);
+    storyClips(story);
+    story.swapTo(1);
+    Test.assert(!story.isTelling());
+    Test.assertEqual(story.dog(), 0);
+    story.update(6, Story.AWAKE, 1);
+    Test.assert(sameClips(storyClips(story), [[0, Story.GET_UP], [0, Story.WALK_OUT], [1, Story.WALK_IN]]));
+    return true;
+}

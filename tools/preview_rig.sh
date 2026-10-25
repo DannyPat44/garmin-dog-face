@@ -13,6 +13,10 @@ DOG_X=97
 DOG_Y=134
 FPS=10
 mkdir -p build/review/.tmp
+# The round screen: white inside, black outside, multiplied in RGB (in YUV
+# the colour planes are half size, and a circle drawn there misses)
+ffmpeg -v error -y -f lavfi -i "color=white:s=${SCREEN}x$SCREEN" -vf \
+    "geq=lum='255*clip(($SCREEN/2-hypot(X-$SCREEN/2+0.5,Y-$SCREEN/2+0.5))+0.5,0,1)':cb=128:cr=128" -frames:v 1 build/review/screen_mask.png
 screen() {  # screen <out> <frame dir>: one animation on the round screen, losslessly
     size=$(ffprobe -v error -select_streams v -show_entries stream=width -of csv=p=0 "$2/0001.png")
     case $2 in
@@ -20,7 +24,8 @@ screen() {  # screen <out> <frame dir>: one animation on the round screen, lossl
         *) fit="crop=$CROP,scale=222:249:flags=lanczos" at="$DOG_X:$DOG_Y" ;;
     esac
     ffmpeg -v error -y -framerate $FPS -i "$2/%04d.png" -f lavfi -i "color=black:s=${SCREEN}x$SCREEN:r=$FPS" \
-        -filter_complex "[0]$fit[d];[1][d]overlay=$at:shortest=1,geq=lum='lum(X,Y)*lte(hypot(X-208,Y-208),208)':cb='128+(cb(X,Y)-128)*lte(hypot(X-208,Y-208),208)':cr='128+(cr(X,Y)-128)*lte(hypot(X-208,Y-208),208)'" \
+        -loop 1 -i build/review/screen_mask.png \
+        -filter_complex "[0]$fit[d];[1][d]overlay=$at:shortest=1,format=rgb24[s];[2]format=rgb24[m];[s][m]blend=all_mode=multiply:shortest=1" \
         -c:v ffv1 "$1"
 }
 gif() {  # gif <out> <frame dirs...>: the animations, one after another
@@ -34,7 +39,7 @@ gif() {  # gif <out> <frame dirs...>: the animations, one after another
         screen "build/review/.tmp/$i.mkv" "$dir"
         echo "file '$PWD/build/review/.tmp/$i.mkv'" >> "$list"
     done
-    ffmpeg -v error -y -f concat -safe 0 -i "$list" -filter_complex "split[a][b];[a]palettegen[p];[b][p]paletteuse" "$out"
+    ffmpeg -v error -y -f concat -safe 0 -i "$list" -filter_complex "split[a][b];[a]palettegen=stats_mode=single[p];[b][p]paletteuse=new=1" "$out"
     rm -f build/review/.tmp/*
 }
 for dog in ${DOGS:-ozzie}; do

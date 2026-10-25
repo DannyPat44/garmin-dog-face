@@ -1,0 +1,23 @@
+<animations>
+    <animation id="MillieAwakeAnimation" filename="millie_awake/millie_awake.mmm" />
+    <animation id="MillieHappyAnimation" filename="millie_happy/millie_happy.mmm" />
+    <animation id="MillieSleepyAnimation" filename="millie_sleepy/millie_sleepy.mmm" />
+    <animation id="MillieWalkinAnimation" filename="millie_walkin/millie_walkin.mmm" />
+    <animation id="MillieWalkoutAnimation" filename="millie_walkout/millie_walkout.mmm" />
+    <animation id="MillieLiedownAnimation" filename="millie_liedown/millie_liedown.mmm" />
+    <animation id="MillieGetupAnimation" filename="millie_getup/millie_getup.mmm" />
+    <animation id="NovaAwakeAnimation" filename="nova_awake/nova_awake.mmm" />
+    <animation id="NovaHappyAnimation" filename="nova_happy/nova_happy.mmm" />
+    <animation id="NovaSleepyAnimation" filename="nova_sleepy/nova_sleepy.mmm" />
+    <animation id="NovaWalkinAnimation" filename="nova_walkin/nova_walkin.mmm" />
+    <animation id="NovaWalkoutAnimation" filename="nova_walkout/nova_walkout.mmm" />
+    <animation id="NovaLiedownAnimation" filename="nova_liedown/nova_liedown.mmm" />
+    <animation id="NovaGetupAnimation" filename="nova_getup/nova_getup.mmm" />
+    <animation id="OzzieAwakeAnimation" filename="ozzie_awake/ozzie_awake.mmm" />
+    <animation id="OzzieHappyAnimation" filename="ozzie_happy/ozzie_happy.mmm" />
+    <animation id="OzzieSleepyAnimation" filename="ozzie_sleepy/ozzie_sleepy.mmm" />
+    <animation id="OzzieWalkinAnimation" filename="ozzie_walkin/ozzie_walkin.mmm" />
+    <animation id="OzzieWalkoutAnimation" filename="ozzie_walkout/ozzie_walkout.mmm" />
+    <animation id="OzzieLiedownAnimation" filename="ozzie_liedown/ozzie_liedown.mmm" />
+    <animation id="OzzieGetupAnimation" filename="ozzie_getup/ozzie_getup.mmm" />
+</animations>

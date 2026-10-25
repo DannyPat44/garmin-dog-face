@@ -1,13 +1,4 @@
 <drawables>
     <bitmap id="LauncherIcon" filename="launcher_icon.png" />
-    <!-- First frame of each mood loop, drawn under the clips -->
-    <bitmap id="MillieAwake" filename="millie_awake.png" />
-    <bitmap id="MillieHappy" filename="millie_happy.png" />
-    <bitmap id="MillieSleepy" filename="millie_sleepy.png" />
-    <bitmap id="NovaAwake" filename="nova_awake.png" />
-    <bitmap id="NovaHappy" filename="nova_happy.png" />
-    <bitmap id="NovaSleepy" filename="nova_sleepy.png" />
-    <bitmap id="OzzieAwake" filename="ozzie_awake.png" />
-    <bitmap id="OzzieHappy" filename="ozzie_happy.png" />
-    <bitmap id="OzzieSleepy" filename="ozzie_sleepy.png" />
+    <!-- The dogs are in resources-round-<size>x<size>/, one set per screen size -->
 </drawables>

@@ -35,15 +35,12 @@ class DogAnimationDelegate extends WatchUi.AnimationDelegate {
 // a still of its last frame, so the face never looks empty between clips or
 // while asleep. The clock and stats are drawn on a layer above the
 // animation, like the SDK's AnimationWatchFace sample, so the system never
-// shows the dog layer on its own while the face redraws.
+// shows the dog layer on its own while the face redraws. Walks fill the
+// whole screen, so the dogs come and go off its edge, under the stats.
 class DogFaceView extends WatchUi.WatchFace {
 
     private const SLEEP_START_HOUR = 22;
     private const SLEEP_END_HOUR = 6;
-    // The dog's box, where the clips are cropped to; the walks fill the whole
-    // screen and are framed around it (DOG_AT in tools/blender/dog_rig.py)
-    private const DOG_WIDTH = 222;
-    private const DOG_TOP = 134;
     // Low enough that the date row and the clock's corners clear the round
     // edge of the screen; the clock overlaps the empty top of the dog's box
     private const ROW_TOP = 0.096;
@@ -78,13 +75,16 @@ class DogFaceView extends WatchUi.WatchFace {
         var clockFont = WatchUi.loadResource(Rez.Fonts.ClockFont) as FontResource;
         _clockFont = clockFont;
         _clockY = (dc.getHeight() * CLOCK_TOP).toNumber();
-        _dogX = (dc.getWidth() - DOG_WIDTH) / 2;
-        _dogY = DOG_TOP;
+        // The dog's box, where the clips are cropped to; the walks fill the
+        // whole screen and are framed around it
+        var box = DogLayout.box(dc.getWidth());
+        _dogX = box[0];
+        _dogY = box[1];
         var face = new WatchUi.Layer({:locX => 0, :locY => 0, :width => dc.getWidth(), :height => dc.getHeight()});
         addLayer(face);
         _face = face;
         var clock = System.getClockTime();
-        _story = new Story(Math.rand() % _stills.size(), currentMood(clock, ActivityMonitor.getInfo()), clock.hour);
+        _story = new Story(DogPicker.next(shownDogs(), null, Math.rand()), currentMood(clock, ActivityMonitor.getInfo()), clock.hour);
     }
 
     // Playback starts from onUpdate, once the face layer is current
@@ -205,8 +205,12 @@ class DogFaceView extends WatchUi.WatchFace {
         if (story == null) {
             return;
         }
-        var count = _stills.size();
-        var next = count > 1 ? (story.dog() + 1 + Math.rand() % (count - 1)) % count : story.dog();
+        var shown = shownDogs();
+        var next = DogPicker.next(shown, story.dog(), Math.rand());
+        if (!DogPicker.isAllowed(shown, story.dog())) {
+            // She was switched off in the settings
+            story.swapTo(next);
+        }
         var clock = System.getClockTime();
         story.update(clock.hour, currentMood(clock, ActivityMonitor.getInfo()), next);
         if (story.isTelling()) {
@@ -234,7 +238,11 @@ class DogFaceView extends WatchUi.WatchFace {
             _animation = null;
         }
         var animation = new WatchUi.AnimationLayer(_clips[next[0]][clip], null);
-        animation.setLocation(_dogX, _dogY);
+        if (Story.fillsScreen(clip)) {
+            animation.setLocation(0, 0);
+        } else {
+            animation.setLocation(_dogX, _dogY);
+        }
         insertLayer(animation, 0);
         _animation = animation;
         _playing = true;

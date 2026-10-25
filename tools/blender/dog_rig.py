@@ -42,10 +42,13 @@ LOOP = 30
 #   head       the head builder from dog.py, plus where the head pivot sits
 #   fur        body fur (length, density, droop) and tail fur
 #   fur_style  how the coat looks: one of FUR_STYLES
+#   collar     (name, or "" for a gold tag, radius, tilt, colour[, band
+#              thickness[, letter height]]), round the base of the neck
 #   poses      adjustments to the shared poses, by pose name
 
-# A warm charcoal for black coats: dark, but still visible on the watch's black
-SADDLE_BLACK = (0.075, 0.06, 0.05)
+# A warm near-black for black coats: the fur's sheen keeps it visible on the
+# watch's black
+SADDLE_BLACK = (0.04, 0.032, 0.027)
 
 SPECS = {
     "ozzie": {
@@ -70,13 +73,13 @@ SPECS = {
         "shoulder": (0, -0.15, 0.45),
         "hip": (0, 0.24, 0.44),
         "neck": ((0, -0.28, 0.58), (0, -0.34, 0.68)),
-        "head": ("ozzie", (0, -0.36, 0.62), 1.25),
+        "head": ("ozzie", (0, -0.36, 0.62), 1.32),
         "scale": 0.9,
         "fur": ((0.03, 7000, 0.5), (0.06, 9000, 0.3)),
         "fur_style": "coarse",
         "ball": True,
-        # Lying, her head turns so her nose rests beside her ball, not in it
-        "poses": {"lie": {"neck": (28, 0, 14)}},
+        # Sitting, her head tilts a little, inquisitively
+        "poses": {"sit": {"neck": (-6, 6, 0)}},
     },
     # A long, low golden dachshund: short legs, long body, silky coat
     "nova": {
@@ -106,7 +109,7 @@ SPECS = {
         # with her head level, so her front legs show under her ears; lying,
         # her head rests higher
         "poses": {"sit": {"chest": (10, 0, 0), "neck": (4, 0, 0)},
-                  "lie": {"neck": (4, 0, 0), "chest": (2, 0, 0)}},
+                  "lie": {"neck": (-28, 12, -34)}},
     },
     # Millie: a sturdy tri-colour hound puppy, black saddle over tan, white
     # bib and paws, and her collar
@@ -115,16 +118,20 @@ SPECS = {
             ((0, -0.14, 0.40), (0.16, 0.17, 0.16)),
             ((0, 0.03, 0.40), (0.15, 0.18, 0.15)),
             ((0, 0.20, 0.41), (0.15, 0.15, 0.15)),
-            ((0, -0.27, 0.53), (0.12, 0.12, 0.15), (-30, 0, 0)),
+            ((0, -0.27, 0.51), (0.15, 0.14, 0.17), (-30, 0, 0)),
         ],
         "front": (0.09, -0.16, 0.39),
         "hind": (0.095, 0.21, 0.39),
         "leg": 1.15,
-        "coat": (dog.TAN, [
-            # Lifted from pure black so her saddle doesn't vanish into the watch's black
-            (SADDLE_BLACK, (0, 0.06, 0.52), (0.20, 0.32, 0.12)),
-            (dog.WHITE, (0, -0.29, 0.42), (0.11, 0.10, 0.16)),
+        # Black (lifted a little, so she doesn't vanish into the watch's black)
+        # with a white bib and belly and tan legs
+        "coat": (SADDLE_BLACK, [
+            (dog.WHITE, (0, -0.36, 0.44), (0.12, 0.12, 0.24)),
             (dog.WHITE, (0, -0.02, 0.27), (0.12, 0.22, 0.06)),
+            (dog.TAN, (-0.09, -0.16, 0.20), (0.10, 0.10, 0.24)),
+            (dog.TAN, (0.09, -0.16, 0.20), (0.10, 0.10, 0.24)),
+            (dog.TAN, (-0.10, 0.21, 0.22), (0.10, 0.11, 0.15)),
+            (dog.TAN, (0.10, 0.21, 0.22), (0.10, 0.11, 0.15)),
         ]),
         "socks": dog.WHITE,
         "tail": ([(0, 0.30, 0.45), (0, 0.35, 0.53), (0, 0.37, 0.62), (0, 0.36, 0.70)], 0.05,
@@ -132,11 +139,13 @@ SPECS = {
         "shoulder": (0, -0.14, 0.42),
         "hip": (0, 0.23, 0.41),
         "neck": ((0, -0.26, 0.55), (0, -0.32, 0.65)),
-        "head": ("millie", (0, -0.30, 0.60), 1.3),
-        "collar": ("MI11IE", 0.15, -55, dog.COLLAR_RED),
+        "head": ("millie", (0, -0.31, 0.68), 1.3),
+        # A slim red collar with a gold tag
+        "collar": ("", 0.14, 0, dog.COLLAR_RED, 0.02),
         "fur": ((0.035, 7000, 0.5), (0.04, 9000, 0.2)),
         "fur_style": "fluffy",
-        "poses": {"lie": {"neck": (12, 0, 0)}},
+        # Lying, her tail curls up behind her
+        "poses": {"lie": {"tail0": (-20, 0, 40), "tail1": (-35, 0, 10), "tail2": (-15, 0, 0)}},
     },
 }
 
@@ -313,10 +322,10 @@ def build_dog(spec):
     collar = None
     if "collar" in spec:
         # Round the base of the neck, moving with it
-        text, radius, tilt, color = spec["collar"]
+        text, radius, tilt, color, *size = spec["collar"]
         base = spec["neck"][0]
         collar = dog.empty("collar_pivot", base)
-        dog.name_collar(text, base, radius, tilt, color, collar)
+        dog.name_collar(text, base, radius, tilt, color, collar, *size)
 
     arm = build_armature(root, spec)
     bind(body, arm)
@@ -351,7 +360,7 @@ SIT = {
     "thigh.L": (-42, 0, 14), "thigh.R": (-42, 0, -14),     # haunches splayed so they show beside the chest
     "shin.L": (110, 0, 0), "shin.R": (110, 0, 0),
     "hind_foot.L": (-70, 0, 0), "hind_foot.R": (-70, 0, 0),
-    "tail0": (40, 0, 0), "tail1": (25, 0, 0), "tail2": (10, 0, 0),
+    "tail0": (-25, 0, -85), "tail1": (-10, 0, -25), "tail2": (0, 0, -10),   # raised out to her side, so it shows
 }
 
 # Lying like a sphinx: body down, front legs out along the ground, hind legs
@@ -359,15 +368,15 @@ SIT = {
 LIE = dict(SIT)
 LIE.update({
     "body_loc": (0, 0.0, -0.27),
-    "spine": (-6, 0, 0),
-    "chest": (8, 0, 0),
-    "neck": (28, 0, 0),
+    "spine": (-2, 0, 0),
+    "chest": (30, 0, 0),
+    "neck": (-10, 12, -34),      # chin low, face turned toward the camera, head tilted
     "front_upper.L": (-86, 0, 0), "front_upper.R": (-86, 0, 0),
     "front_lower.L": (10, 0, 0), "front_lower.R": (10, 0, 0),
     "front_foot.L": (0, 0, 0), "front_foot.R": (0, 0, 0),
-    "thigh.L": (-82, 0, 28), "thigh.R": (-82, 0, -28),
-    "shin.L": (128, 0, 0), "shin.R": (128, 0, 0),
-    "hind_foot.L": (-40, 0, 0), "hind_foot.R": (-40, 0, 0),
+    "thigh.L": (-70, 0, 18), "thigh.R": (-70, 0, -18),     # folded close, so long legs don't poke out
+    "shin.L": (145, 0, 0), "shin.R": (145, 0, 0),
+    "hind_foot.L": (-60, 0, 0), "hind_foot.R": (-60, 0, 0),
     "tail0": (75, 0, 35), "tail1": (35, 0, 25), "tail2": (15, 0, 15),
 })
 
@@ -562,6 +571,16 @@ ROLL_DRAG = 1.6         # units/s^2 of rolling resistance
 SETTLE = 0.4            # below this falling speed it stops bouncing and rolls
 
 
+def steer_ball(path, rest):
+    """The simulated path eased, from nothing at the drop to all of it at the
+    end, so the ball comes to rest at `rest` (on the ground)."""
+    end = path[-1][0]
+    shift = Vector((rest.x - end.x, rest.y - end.y, 0))
+    last = len(path) - 1
+    return [(p + shift * dog.smoothstep(0, last, i), angle, axis, squash)
+            for i, (p, angle, axis, squash) in enumerate(path)]
+
+
 def simulate_ball(start, velocity, frames):
     """A dropped ball, sub-stepped at 1 kHz so bounces land between frames:
     falls, bounces lower each time, loses a little speed at each bounce, then
@@ -626,14 +645,19 @@ def key_loose_ball(ball, frames, start_frame):
 # --- timelines --------------------------------------------------------------
 
 SIT_SPOT = Vector((0.0, 0.04, 0))
-SIT_HEADING = 30         # three-quarter view while sitting or lying
+SIT_HEADING = 6          # sitting nearly square to the camera, looking out of the watch
+LIE_HEADING = -62        # lying turned to the left, so her length shows
+LIE_SPOT = SIT_SPOT + Vector((0.26, 0.24, 0))   # and shuffled right and back, so she fits the box
 WALK_HEADING = 80        # nearly side-on while walking
 DROP_TOSS = Vector((0, 0, 0.3))
 DROP_SPEED = 0.15        # units/s as the ball leaves her mouth
 DROP_ANGLE = 50          # degrees to her left of straight ahead: rolls out across the screen
+# Where the ball comes to rest, just in front of her paws: facing the camera,
+# it would roll so far forward that it drops out of the bottom of the box
+BALL_REST = Vector((0.10, -0.50, 0))
 
 
-# The watch's layout, in pixels (see DogFaceView and tools/build_art.sh): the
+# The watch's layout, in pixels (see DogLayout and tools/build_art.sh): the
 # loops are cropped to CROP (left, top, width, in 400px-frame units, so
 # whatever size was rendered) and scaled to DOG_BOX_WIDTH at DOG_AT on the
 # SCREEN. The walks fill the whole screen instead, so the dog can come and go
@@ -721,6 +745,7 @@ class WalkIn:
             start = held_ball_position(rig, self.DROP_AT)
             toss = forward(self.headings[self.DROP_AT - 1] + DROP_ANGLE) * DROP_SPEED + DROP_TOSS
             path = simulate_ball(start, toss, self.FRAMES - self.DROP_AT + 1)
+            path = steer_ball(path, BALL_REST)
             park(self.ball, 1)
             key_loose_ball(self.ball, path, self.DROP_AT)
             show(rig["ball"], 1, True)
@@ -756,6 +781,7 @@ class WalkOut:
     STAND_FROM, STAND_TO = 5, 15
     STEP_FROM, STEP_TO = 14, 24
     DIP_FROM, PICK_AT, DIP_TO = 22, 26, 31
+    GRAB_AT = 29             # the ball is in her mouth
     TURN_FROM, TURN_TO = 29, 42
     GO_FROM, GO_TO = 30, 42
     DIP = {"neck": (34, 0, 0), "chest": (6, 0, 0)}
@@ -803,15 +829,22 @@ class WalkOut:
             key_root(rig, f, positions[f - 1], headings[f - 1])
             key_face(rig, f, blink=0.1 if f in (3, 4) else 1.0, ear=5 * math.sin(f * 0.8) * amount)
         if self.ball is not None:
+            # The ball lifts into her mouth over a few frames, then the held
+            # ball takes over exactly where the loose one is, so it doesn't pop
             hold(self.ball, 1, self.rest)
-            park(self.ball, self.PICK_AT)
+            hold(self.ball, self.PICK_AT - 1, self.rest)
+            for f in range(self.PICK_AT, self.GRAB_AT):
+                t = ease(self.PICK_AT - 1, self.GRAB_AT, f)
+                self.ball.location = self.rest.lerp(held_ball_position(rig, f), t)
+                self.ball.keyframe_insert("location", frame=f)
+            park(self.ball, self.GRAB_AT)
             show(rig["ball"], 1, False)
-            show(rig["ball"], self.PICK_AT, True)
+            show(rig["ball"], self.GRAB_AT, True)
         return n
 
 
 # Where the sleeping Zzz rise from, clear of the head; a spec's "zzz" overrides it
-ZZZ_FROM = (0.30, -0.4, 0.74)
+ZZZ_FROM = (0.02, -0.4, 0.74)
 
 
 def awake_offsets(f):
@@ -841,7 +874,10 @@ def idle(rig, mood, zzz):
                    "tail2": (0, 0, 10 * (dog.pulse(f, 19, 1.4) - 0.6 * dog.pulse(f, 22, 1.4)))}
             key_face(rig, f, blink=0.06, ear=18 * dog.pulse(f, 9, 1.2))
         key_pose(rig, add(base, off), f)
-        key_root(rig, f, SIT_SPOT, SIT_HEADING)
+        if mood == "sleepy":
+            key_root(rig, f, LIE_SPOT, LIE_HEADING)
+        else:
+            key_root(rig, f, SIT_SPOT, SIT_HEADING)
     for i, z in enumerate(zzz):
         z.hide_render = mood != "sleepy"
         for f in range(1, LOOP + 1):
@@ -855,20 +891,21 @@ def idle(rig, mood, zzz):
 
 def lie_down(rig):
     """From sitting to lying, for the dog who stays the night: a yawn, then
-    down, eyes closing, ending on the sleepy loop's first frame."""
+    down, turning as she goes, eyes closing, ending on the sleepy loop's first
+    frame."""
     sit, lie = dog_pose(rig, "sit"), dog_pose(rig, "lie")
     for f in range(1, LOOP + 1):
         t = ease(6, 24, f)
         yawn = dog.pulse(f, 5, 2.0)
         key_pose(rig, add(blend(sit, lie, t), {"neck": (-18 * yawn, 0, 0)}), f)
-        key_root(rig, f, SIT_SPOT, SIT_HEADING)
+        key_root(rig, f, SIT_SPOT.lerp(LIE_SPOT, t), SIT_HEADING + (LIE_HEADING - SIT_HEADING) * t)
         key_face(rig, f, blink=1.0 - 0.94 * ease(18, 28, f), ear=10 * t, tongue=yawn > 0.5)
     return LOOP
 
 
 def pose_sheet(rig):
     """Key poses side-on and three-quarter, one per frame, for checking a dog."""
-    frames = [("stand", 85), ("sit", 85), ("sit", SIT_HEADING), ("lie", 85), ("lie", SIT_HEADING)]
+    frames = [("stand", 85), ("sit", 85), ("sit", SIT_HEADING), ("lie", 85), ("lie", LIE_HEADING)]
     for i, (name, heading) in enumerate(frames, 1):
         key_pose(rig, dog_pose(rig, name), i)
         key_root(rig, i, SIT_SPOT, heading)

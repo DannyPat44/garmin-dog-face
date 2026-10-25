@@ -4,11 +4,12 @@
 # ///
 """Convert Fredoka (tools/fonts, SIL OFL) into a Connect IQ bitmap font for the clock.
 
-Writes resources/fonts/clock.fnt (AngelCode BMFont text format) and clock_0.png
-with just the digits and colon. Metrics are trimmed to the digit height so the
+Writes clock.fnt (AngelCode BMFont text format) and clock_0.png with just the
+digits and colon into --out (default resources-round-416x416/fonts, the
+FR265's; tools/build_art.sh makes one per screen size). Metrics are trimmed to the digit height so the
 clock centres exactly with TEXT_JUSTIFY_VCENTER.
 
-    uv run tools/make_font.py [--size 104] [--weight 700]
+    uv run tools/make_font.py [--size 104] [--weight 700] [--out DIR]
 """
 
 import argparse
@@ -26,6 +27,7 @@ def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--size", type=int, default=104)
     p.add_argument("--weight", type=int, default=700)
+    p.add_argument("--out", default="resources-round-416x416/fonts")
     args = p.parse_args()
 
     font = ImageFont.truetype(str(ROOT / "tools/fonts/Fredoka.ttf"), args.size)
@@ -48,7 +50,7 @@ def main() -> None:
     for c, (gx, l, t, w, h) in placed.items():
         draw.text((gx + PAD - l, PAD + (t - top) - t), c, font=font, fill=(255, 255, 255, 255))
 
-    out = ROOT / "resources/fonts"
+    out = ROOT / args.out
     out.mkdir(parents=True, exist_ok=True)
     sheet.save(out / "clock_0.png")
     lines = [
