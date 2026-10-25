@@ -4,7 +4,8 @@
 #   build/review/rig_<dog>_story.gif   walk in, sit for two loops, walk out
 set -e
 cd "$(dirname "$0")/.."
-CROP=292:328:76:62
+# The watch crop, in 400px frame units, scaled to whatever size was rendered
+CROP="292*iw/400:328*ih/400:76*iw/400:62*ih/400"
 FPS=10
 mkdir -p build/review
 gif() {  # gif <out> <frame dirs...>: frames flattened onto black, cropped and scaled like the watch art
@@ -15,7 +16,8 @@ gif() {  # gif <out> <frame dirs...>: frames flattened onto black, cropped and s
     for dir in "$@"; do
         for f in "$dir"/*.png; do echo "file '$PWD/$f'" >> "$list"; echo "duration 0.1" >> "$list"; done
     done
-    ffmpeg -v error -y -f concat -safe 0 -i "$list" -f lavfi -i "color=black:s=400x400:r=$FPS" -filter_complex \
+    size=$(ffprobe -v error -select_streams v -show_entries stream=width -of csv=p=0 "$(ls "$1"/*.png | head -1)")
+    ffmpeg -v error -y -f concat -safe 0 -i "$list" -f lavfi -i "color=black:s=${size}x$size:r=$FPS" -filter_complex \
         "[0]fps=$FPS[f];[1][f]overlay=shortest=1,crop=$CROP,scale=222:249:flags=lanczos,split[a][b];[a]palettegen[p];[b][p]paletteuse" \
         "$out"
     rm -f "$list"

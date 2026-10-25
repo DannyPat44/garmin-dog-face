@@ -333,10 +333,12 @@ def add_fur(obj, hair_mat, length, density, droop=0.4):
     s.type = "HAIR"
     s.count = max(300, int(area * density))
     # With advanced hair, strand length and direction come from the emission
-    # velocity: out along the normal, pulled down a little like real fur
+    # velocity: out along the normal, combed back toward the tail and down.
+    # Combing straight down would cancel the fur on upward-facing surfaces
+    # (a bald back with a long, droopy coat).
     s.use_advanced_hair = True
     s.normal_factor = length
-    s.object_align_factor = (0, 0, -droop * length)
+    s.object_align_factor = (0, 0.6 * droop * length, -0.6 * droop * length)
     s.factor_random = length * 0.25
     s.hair_length = length
     s.hair_step = 5
@@ -772,7 +774,8 @@ def ozzie_head(rig, head_pivot, ball):
     ]
     head_mesh = sculpt("head", head, coat_materials("head", RED, head_patches), head_pivot,
                        fur=(0.016, 12000, 0.3))
-    add_face(rig, head_mesh, head_pivot, nose_z=1.07, eye_x=0.095, eye_z=1.17, eye_r=0.048)
+    # Her muzzle is narrow and pointed, so the nose is smaller and set in
+    add_face(rig, head_mesh, head_pivot, nose_z=1.075, eye_x=0.095, eye_z=1.17, eye_r=0.048, nose_size=0.68)
     rig["ears"] = [prick_ear(1, (0.13, -0.02, 1.30), head_pivot),
                    folded_ear(-1, (-0.13, -0.02, 1.30), head_pivot)]
     if ball:
@@ -790,13 +793,15 @@ def require_sitting(name, pose):
         sys.exit(f"{name}: only the sitting pose is modelled so far")
 
 
-def add_face(rig, head_mesh, head_pivot, nose_z, eye_x, eye_z, eye_r, tongue_loc=None):
+def add_face(rig, head_mesh, head_pivot, nose_z, eye_x, eye_z, eye_r, tongue_loc=None, nose_size=1.0):
     """Nose and eyes placed on the sculpted head by ray casting, plus the
-    tongue (shown only when happy) just under the nose."""
-    nose_y = (surface_y(head_mesh, 0, nose_z) or -0.40) - 0.01
-    nose = [((0, nose_y, nose_z), (0.06, 0.04, 0.04)),
-            ((-0.022, nose_y - 0.008, nose_z - 0.006), (0.035, 0.03, 0.03)),
-            ((0.022, nose_y - 0.008, nose_z - 0.006), (0.035, 0.03, 0.03))]
+    tongue (shown only when happy) just under the nose. nose_size scales the
+    nose for a narrower muzzle, and sets it back into the muzzle to match."""
+    k = nose_size
+    nose_y = (surface_y(head_mesh, 0, nose_z) or -0.40) - 0.01 * k + 0.02 * (1 - k)
+    nose = [((0, nose_y, nose_z), (0.06 * k, 0.04 * k, 0.04 * k)),
+            ((-0.022 * k, nose_y - 0.008 * k, nose_z - 0.006 * k), (0.035 * k, 0.03 * k, 0.03 * k)),
+            ((0.022 * k, nose_y - 0.008 * k, nose_z - 0.006 * k), (0.035 * k, 0.03 * k, 0.03 * k))]
     sculpt("nose", nose, [nose_material()], head_pivot, resolution=0.006)
 
     eye_mat = eye_material(eye_r)

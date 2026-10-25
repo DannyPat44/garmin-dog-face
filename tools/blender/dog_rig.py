@@ -44,6 +44,9 @@ LOOP = 30
 #   fur_style  how the coat looks: one of FUR_STYLES
 #   poses      adjustments to the shared poses, by pose name
 
+# A warm charcoal for black coats: dark, but still visible on the watch's black
+SADDLE_BLACK = (0.075, 0.06, 0.05)
+
 SPECS = {
     "ozzie": {
         "torso": [
@@ -72,7 +75,8 @@ SPECS = {
         "fur": ((0.03, 7000, 0.5), (0.06, 9000, 0.3)),
         "fur_style": "coarse",
         "ball": True,
-        "poses": {},
+        # Lying, her head turns so her nose rests beside her ball, not in it
+        "poses": {"lie": {"neck": (28, 0, 14)}},
     },
     # A long, low golden dachshund: short legs, long body, silky coat
     "nova": {
@@ -98,8 +102,11 @@ SPECS = {
         "scale": 0.88,
         "fur": ((0.032, 7000, 0.8), (0.09, 9000, 0.7)),
         "fur_style": "silky",
-        # Her head is big for her short legs: lying, it rests higher
-        "poses": {"lie": {"neck": (4, 0, 0), "chest": (2, 0, 0)}},
+        # Her head is big for her short legs: sitting, she rears her chest up
+        # with her head level, so her front legs show under her ears; lying,
+        # her head rests higher
+        "poses": {"sit": {"chest": (10, 0, 0), "neck": (4, 0, 0)},
+                  "lie": {"neck": (4, 0, 0), "chest": (2, 0, 0)}},
     },
     # Millie: a sturdy tri-colour hound puppy, black saddle over tan, white
     # bib and paws, and her collar
@@ -114,18 +121,19 @@ SPECS = {
         "hind": (0.095, 0.21, 0.39),
         "leg": 1.15,
         "coat": (dog.TAN, [
-            (dog.BLACK, (0, 0.06, 0.52), (0.20, 0.32, 0.12)),
+            # Lifted from pure black so her saddle doesn't vanish into the watch's black
+            (SADDLE_BLACK, (0, 0.06, 0.52), (0.20, 0.32, 0.12)),
             (dog.WHITE, (0, -0.29, 0.42), (0.11, 0.10, 0.16)),
             (dog.WHITE, (0, -0.02, 0.27), (0.12, 0.22, 0.06)),
         ]),
         "socks": dog.WHITE,
         "tail": ([(0, 0.30, 0.45), (0, 0.35, 0.53), (0, 0.37, 0.62), (0, 0.36, 0.70)], 0.05,
-                 [(dog.BLACK, 1, (0.08, 0.08, 0.08)), (dog.WHITE, 3, (0.06, 0.06, 0.07))]),
+                 [(SADDLE_BLACK, 1, (0.08, 0.08, 0.08)), (dog.WHITE, 3, (0.06, 0.06, 0.07))]),
         "shoulder": (0, -0.14, 0.42),
         "hip": (0, 0.23, 0.41),
         "neck": ((0, -0.26, 0.55), (0, -0.32, 0.65)),
         "head": ("millie", (0, -0.30, 0.60), 1.3),
-        "collar": ("MI11IE", 0.165, -55, dog.COLLAR_RED),
+        "collar": ("MI11IE", 0.15, -55, dog.COLLAR_RED),
         "fur": ((0.035, 7000, 0.5), (0.04, 9000, 0.2)),
         "fur_style": "fluffy",
         "poses": {"lie": {"neck": (12, 0, 0)}},
@@ -340,7 +348,7 @@ SIT = {
     "chest": (40, 0, 0),           # undo the spine's swing: the head stays level
     "neck": (-6, 0, 0),
     "front_upper.L": (42, 0, 0), "front_upper.R": (42, 0, 0),   # front legs stay upright
-    "thigh.L": (-38, 0, 8), "thigh.R": (-38, 0, -8),
+    "thigh.L": (-42, 0, 14), "thigh.R": (-42, 0, -14),     # haunches splayed so they show beside the chest
     "shin.L": (110, 0, 0), "shin.R": (110, 0, 0),
     "hind_foot.L": (-70, 0, 0), "hind_foot.R": (-70, 0, 0),
     "tail0": (40, 0, 0), "tail1": (25, 0, 0), "tail2": (10, 0, 0),
@@ -370,14 +378,45 @@ POSES = {"stand": STAND, "sit": SIT, "lie": LIE}
 POSE_LEG = 0.42
 
 
+# Bones hanging off the spine: when the spine tilts by a different amount,
+# these keep their angle to the ground
+SPINE_CHILDREN = ("chest", "front_upper.L", "front_upper.R", "thigh.L", "thigh.R", "tail0")
+
+
+def spine_drop(spec):
+    """How far the hips sit below the shoulders' height, and the spine's length."""
+    shoulder, hip = Vector(spec["shoulder"]), Vector(spec["hip"])
+    return hip.z, (hip - shoulder).length
+
+
+def sit_tilt(spec):
+    """The spine's pitch when sitting: tilted until the hips are as low,
+    relative to the hind legs, as Ozzie's (whose proportions SIT was made
+    for). A long, low dog like Nova tilts less, or her rump would sink
+    through the floor."""
+    hip_z, length = spine_drop(spec)
+    ref_hip, ref_length = spine_drop(SPECS["ozzie"])
+    ratio = (ref_hip - ref_length * math.sin(math.radians(-SIT["spine"][0]))) / SPECS["ozzie"]["hind"][2]
+    drop = max(0.0, min(length, hip_z - ratio * spec["hind"][2]))
+    return -math.degrees(math.asin(drop / length))
+
+
 def dog_pose(rig, name):
     """A shared pose with the dog's own adjustments. How far the body drops
-    (lying) scales with the dog's leg height."""
+    (lying) scales with the dog's leg height, and how far the spine tilts
+    (sitting) with the length of the body."""
     spec = rig["spec"]
     pose = dict(POSES[name])
     if "body_loc" in pose:
         x, y, z = pose["body_loc"]
         pose["body_loc"] = (x, y, z * spec["front"][2] / POSE_LEG)
+    if name == "sit":
+        tilt = sit_tilt(spec)
+        change = pose["spine"][0] - tilt
+        pose["spine"] = (tilt, 0, 0)
+        for bone in SPINE_CHILDREN:
+            p, r, y = pose.get(bone, (0, 0, 0))
+            pose[bone] = (p + change, r, y)
     pose.update(spec["poses"].get(name, {}))
     return pose
 
@@ -607,11 +646,12 @@ class WalkIn:
     """Walks in (carrying the ball, if she has one), slows and turns toward
     the camera, drops the ball, which bounces and rolls, then sits and settles
     on the sitting loops' first frame."""
-    FRAMES = 78
-    SLOW_FROM, STOP_AT = 34, 46
-    TURN_FROM, TURN_TO = 32, 50
-    DIP_FROM, DROP_AT, DIP_TO = 47, 51, 56
-    SIT_FROM, SIT_TO = 55, 68
+    # Starts far enough left to be outside the watch's dog box on frame 1
+    FRAMES = 88
+    SLOW_FROM, STOP_AT = 44, 56
+    TURN_FROM, TURN_TO = 42, 60
+    DIP_FROM, DROP_AT, DIP_TO = 57, 61, 66
+    SIT_FROM, SIT_TO = 65, 78
 
     def __init__(self, rig, loose_ball):
         self.rig, self.ball = rig, loose_ball
@@ -634,7 +674,10 @@ class WalkIn:
         # A small overshoot of the head as she lands, and the tail sweeping
         settle = dog.pulse(f, self.SIT_TO + 1, 2.0)
         wag = 12 * math.sin((f - self.SIT_FROM) * 0.9) * sit * (1 - ease(self.SIT_TO, self.FRAMES - 2, f))
-        return add(pose, {"neck": (-5 * settle, 0, 0), "tail1": (0, 0, wag)})
+        pose = add(pose, {"neck": (-5 * settle, 0, 0), "tail1": (0, 0, wag)})
+        # Ease into the awake loop's first frame, so the cut to it is seamless
+        into_loop = ease(self.SIT_TO, self.FRAMES, f)
+        return add(pose, {k: tuple(a * into_loop for a in v) for k, v in awake_offsets(1).items()})
 
     def animate(self):
         rig = self.rig
@@ -678,7 +721,7 @@ def ball_rest(rig, ball):
 
 class WalkOut:
     """Stands up, steps to the ball and picks it up, turns and walks off."""
-    FRAMES = 72
+    FRAMES = 76
     STAND_FROM, STAND_TO = 5, 15
     STEP_FROM, STEP_TO = 14, 24
     DIP_FROM, PICK_AT, DIP_TO = 22, 26, 31
@@ -706,7 +749,9 @@ class WalkOut:
             reach.z = 0
         headings = [SIT_HEADING + (WALK_HEADING + 10 - SIT_HEADING) * ease(self.TURN_FROM, self.TURN_TO, f)
                     for f in range(1, n + 1)]
-        speeds = [WALK_SPEED * ease(self.GO_FROM, self.GO_TO, f) for f in range(1, n + 1)]
+        # Picks up to a trot once she's turned, so she's gone by the last frame
+        speeds = [WALK_SPEED * (ease(self.GO_FROM, self.GO_TO, f) + 0.4 * ease(self.GO_TO, self.GO_TO + 10, f))
+                  for f in range(1, n + 1)]
         positions, travel = [], Vector((0, 0, 0))
         for f in range(1, n + 1):
             travel += forward(headings[f - 1]) * speeds[f - 1]
@@ -734,22 +779,30 @@ class WalkOut:
         return n
 
 
+# Where the sleeping Zzz rise from, clear of the head; a spec's "zzz" overrides it
+ZZZ_FROM = (0.30, -0.4, 0.74)
+
+
+def awake_offsets(f):
+    """The awake loop's movement at frame f: a head tilt, the tail and breathing."""
+    tilt = 12 * max(0.0, dog.wave(f, 1)) ** 1.5
+    return {"neck": (0, tilt, 0), "tail1": (0, 0, 22 * dog.wave(f, 3)), "tail2": (0, 0, 14 * dog.wave(f, 3, 0.1)),
+            "chest": (1.5 * dog.wave(f, 1), 0, 0)}
+
+
 def idle(rig, mood, zzz):
     """30-frame loops in the resting pose: sitting (awake, happy) or lying
     (sleepy, head down on her paws)."""
     base = dog_pose(rig, "lie" if mood == "sleepy" else "sit")
     for f in range(1, LOOP + 1):
-        w1 = dog.wave(f, 1)
         if mood == "awake":
-            tilt = 12 * max(0.0, dog.wave(f, 1)) ** 1.5
-            off = {"neck": (0, tilt, 0), "tail1": (0, 0, 22 * dog.wave(f, 3)), "tail2": (0, 0, 14 * dog.wave(f, 3, 0.1)),
-                   "chest": (1.5 * w1, 0, 0)}
-            key_face(rig, f, blink=0.1 if f in (19, 20) else 1.0, ear=-0.6 * tilt)
+            off = awake_offsets(f)
+            key_face(rig, f, blink=0.1 if f in (19, 20) else 1.0, ear=-0.6 * off["neck"][1])
         elif mood == "happy":
             off = {"body_loc": (0, 0, 0.022 * abs(dog.wave(f, 2))), "neck": (0, 4 * dog.wave(f, 2), 0),
                    "tail0": (0, 0, 18 * dog.wave(f, 5)), "tail1": (0, 0, 28 * dog.wave(f, 5, 0.08)),
                    "tail2": (0, 0, 20 * dog.wave(f, 5, 0.16))}
-            key_face(rig, f, blink=0.7, ear=4 * dog.wave(f, 2), tongue=True)
+            key_face(rig, f, blink=0.1 if f in (12, 13) else 1.0, ear=4 * dog.wave(f, 2), tongue=True)
         else:
             breath = dog.wave(f, 1)
             off = {"chest": (2.5 * breath, 0, 0), "spine": (-1.5 * breath, 0, 0), "neck": (2 * breath, 0, 0),
@@ -762,7 +815,8 @@ def idle(rig, mood, zzz):
         z.hide_render = mood != "sleepy"
         for f in range(1, LOOP + 1):
             t = ((f - 1) / LOOP + i / 3) % 1.0
-            dog.key(z, "location", f, (0.22 + 0.2 * t, -0.4, 0.62 + 0.45 * t))
+            x, y, zz = rig["spec"].get("zzz", ZZZ_FROM)
+            dog.key(z, "location", f, (x + 0.2 * t, y, zz + 0.45 * t))
             s = (0.10 + 0.10 * t) * min(1.0, t * 4, (1 - t) * 4)
             dog.key(z, "scale", f, (s, s, s))
     return LOOP
@@ -846,7 +900,7 @@ def main():
     if args.anim in ("walkin", "walkout"):
         # Motion blur smooths the walk and the bouncing ball at 10 fps
         scene.render.use_motion_blur = True
-        scene.render.motion_blur_shutter = 0.35
+        scene.render.motion_blur_shutter = 0.2   # longer smears furry legs into mush
     if args.blend:
         bpy.ops.wm.save_as_mainfile(filepath=args.blend)
     if args.still:
