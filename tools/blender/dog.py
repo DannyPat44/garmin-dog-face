@@ -26,6 +26,7 @@ import argparse
 import math
 import sys
 
+import bmesh
 import bpy
 from mathutils import Euler, Vector
 
@@ -49,6 +50,9 @@ AMBER = (0.24, 0.11, 0.035)
 RED = (0.42, 0.17, 0.06)
 DARK_RED = (0.15, 0.06, 0.025)
 EAR_DARK = (0.07, 0.03, 0.015)
+STRAW = (0.42, 0.27, 0.11)
+STRAW_DARK = (0.20, 0.12, 0.045)
+COLLAR_RED = (0.55, 0.02, 0.03)
 STONE = (0.10, 0.13, 0.17)
 BALL = (0.50, 0.70, 0.05)
 ZZZ = (0.04, 0.22, 1.0)
@@ -414,6 +418,8 @@ def build_puppy(pose):
         ]
     rig["torso"] = sculpt("body", body, coat_materials("body", BLACK, body_patches), root,
                           fur=(0.045, 7000, 0.5))
+    if not lying:
+        name_collar("MILLIE", (0, -0.03, 0.60), 0.17, 20, COLLAR_RED, root)
 
     # Tail: a short blended chain curling out to the dog's left
     tail_root = empty("tail_root", (0.12, 0.50, 0.15) if lying else (0.12, 0.22, 0.10), root)
@@ -521,9 +527,13 @@ def build_nova(pose):
     rig["ears"] = [drop_ear(side, (side * 0.12, -0.02, 1.25), AMBER, head_pivot, fur=(0.045, 12000, 1.0),
                             length=1.05, width=0.85) for side in (-1, 1)]
 
-    head_pivot.scale = (1.35,) * 3
-    head_pivot.location = (0, -0.07, 0.74)
+    sombrero((0, -0.05, 1.31), (14, 10, 0), head_pivot)
+
+    head_pivot.scale = (1.30,) * 3
+    head_pivot.location = (0, -0.07, 0.68)
     head_pivot.rotation_euler = (0, math.radians(6), math.radians(-18))
+    # She's the smallest dog, which also leaves room under the clock for the hat
+    root.scale = (0.88,) * 3
     return rig
 
 
@@ -558,7 +568,7 @@ def build_ozzie(pose):
         ]
     rig["torso"] = sculpt("body", body, coat_materials("body", RED, body_patches), root,
                           fur=(0.03, 7000, 0.5))
-    collar((0, -0.06, 0.72), 0.19, -22, root)
+    collar((0, -0.04, 0.62), 0.18, 20, root)
 
     # Bushy tail curling up, with a dark band and a white tip
     tail_root = empty("tail_root", (0.12, 0.24, 0.10), root)
@@ -683,10 +693,152 @@ def collar(loc, radius, tilt, parent):
     return obj
 
 
-def build_ground():
+def lathe(name, profile, segments=64):
+    """A surface of revolution around Z from (radius, height) pairs; a zero
+    radius closes the surface to a point."""
+    bm = bmesh.new()
+    rings = []
+    for r, z in profile:
+        if r < 1e-6:
+            rings.append([bm.verts.new((0, 0, z))])
+        else:
+            rings.append([bm.verts.new((r * math.cos(2 * math.pi * i / segments),
+                                        r * math.sin(2 * math.pi * i / segments), z)) for i in range(segments)])
+    for a, b in zip(rings, rings[1:]):
+        for i in range(segments):
+            j = (i + 1) % segments
+            if len(b) == 1:
+                bm.faces.new((a[i], a[j], b[0]))
+            elif len(a) == 1:
+                bm.faces.new((a[0], b[j], b[i]))
+            else:
+                bm.faces.new((a[i], a[j], b[j], b[i]))
+    mesh = bpy.data.meshes.new(name)
+    bm.to_mesh(mesh)
+    bm.free()
+    for poly in mesh.polygons:
+        poly.use_smooth = True
+    obj = bpy.data.objects.new(name, mesh)
+    bpy.context.collection.objects.link(obj)
+    return obj
+
+
+def straw_material():
+    """Coiled straw: concentric rings with a woven bump."""
+    mat = bpy.data.materials.new("straw")
+    nodes, links = mat.node_tree.nodes, mat.node_tree.links
+    bsdf = nodes["Principled BSDF"]
+    bsdf.inputs["Roughness"].default_value = 0.75
+    coords = nodes.new("ShaderNodeTexCoord")
+    rings = _node(nodes, "ShaderNodeTexWave", Scale=55.0, Distortion=1.5, Detail=3.0)
+    rings.wave_type = "RINGS"
+    links.new(coords.outputs["Object"], rings.inputs["Vector"])
+    ramp = nodes.new("ShaderNodeValToRGB")
+    ramp.color_ramp.elements[0].color = (*STRAW_DARK, 1)
+    ramp.color_ramp.elements[1].color = (*STRAW, 1)
+    links.new(rings.outputs["Fac"], ramp.inputs["Fac"])
+    links.new(ramp.outputs["Color"], bsdf.inputs["Base Color"])
+    bump = _node(nodes, "ShaderNodeBump", Strength=0.4, Distance=0.003)
+    links.new(rings.outputs["Fac"], bump.inputs["Height"])
+    links.new(bump.outputs["Normal"], bsdf.inputs["Normal"])
+    return mat
+
+
+def rainbow_material():
+    """Shiny metallic foil whose hue runs around the hat's axis."""
+    mat = glossy_material("rainbow", (1, 1, 1), 0.2, 0.3)
+    nodes, links = mat.node_tree.nodes, mat.node_tree.links
+    bsdf = nodes["Principled BSDF"]
+    bsdf.inputs["Metallic"].default_value = 1.0
+    coords = nodes.new("ShaderNodeTexCoord")
+    xyz = nodes.new("ShaderNodeSeparateXYZ")
+    links.new(coords.outputs["Object"], xyz.inputs[0])
+    angle = nodes.new("ShaderNodeMath")
+    angle.operation = "ARCTAN2"
+    links.new(xyz.outputs["Y"], angle.inputs[0])
+    links.new(xyz.outputs["X"], angle.inputs[1])
+    turns = nodes.new("ShaderNodeMath")
+    turns.operation = "MULTIPLY"
+    turns.inputs[1].default_value = 4 / (2 * math.pi)
+    links.new(angle.outputs[0], turns.inputs[0])
+    hue = nodes.new("ShaderNodeMath")
+    hue.operation = "FRACT"
+    links.new(turns.outputs[0], hue.inputs[0])
+    hsv = nodes.new("ShaderNodeCombineColor")
+    hsv.mode = "HSV"
+    hsv.inputs[1].default_value = 0.85
+    hsv.inputs[2].default_value = 0.9
+    links.new(hue.outputs[0], hsv.inputs[0])
+    links.new(hsv.outputs[0], bsdf.inputs["Base Color"])
+    return mat
+
+
+def sombrero(loc, rot, parent):
+    """Nova's little straw sombrero: a tall pointed crown and an upturned brim,
+    with a rainbow foil hat band and rim trim."""
+    pivot = empty("hat", loc)
+    pivot.rotation_euler = [math.radians(a) for a in rot]
+    straw = straw_material()
+    rainbow = rainbow_material()
+    hat = lathe("sombrero", [(0.28, 0.045), (0.27, 0.022), (0.245, 0.007), (0.19, 0.0), (0.15, 0.0),
+                             (0.12, 0.004), (0.118, 0.05), (0.108, 0.10), (0.088, 0.15),
+                             (0.06, 0.19), (0.03, 0.212), (0.0, 0.218)])
+    band = lathe("hat_band", [(0.125, 0.006), (0.122, 0.05)])
+    rim = lathe("hat_rim", [(0.272, 0.034), (0.288, 0.046), (0.281, 0.058)])
+    for obj, mat, thickness in ((hat, straw, 0.006), (band, rainbow, 0.006), (rim, rainbow, 0.004)):
+        obj.data.materials.append(mat)
+        solid = obj.modifiers.new("solid", "SOLIDIFY")
+        solid.thickness = thickness
+        solid.offset = 0
+        obj.parent = pivot
+    set_parent(pivot, parent)
+    return pivot
+
+
+def name_collar(text, loc, radius, tilt, color, parent):
+    """A flat collar band with the dog's name in raised white letters across
+    the front. tilt (degrees) tips the front down onto the chest."""
+    pivot = empty("collar", loc)
+    pivot.rotation_euler = (math.radians(tilt), 0, 0)
+    bpy.ops.mesh.primitive_torus_add(major_radius=radius, minor_radius=0.035, major_segments=96, minor_segments=16)
+    band = bpy.context.active_object
+    band.name = "collar_band"
+    band.scale = (1, 1, 1.6)
+    bpy.ops.object.transform_apply(scale=True)
+    bpy.ops.object.shade_smooth()
+    band.data.materials.append(glossy_material("collar_band", color, 0.4, 0.3))
+    band.parent = pivot
+
+    letter_mat = emissive_material("collar_letters", (1, 1, 1), 0.6)
+    size = 0.062
+    step = size * 0.70 / (radius + 0.035)
+    for i, ch in enumerate(text):
+        a = (i - (len(text) - 1) / 2) * step
+        bpy.ops.object.text_add()
+        letter = bpy.context.active_object
+        letter.data.body = ch
+        letter.data.size = size
+        letter.data.extrude = 0.003
+        letter.data.offset = 0.0025  # bolder strokes so it reads at watch size
+        letter.data.align_x = "CENTER"
+        letter.data.align_y = "CENTER"
+        letter.data.materials.append(letter_mat)
+        r = radius + 0.036
+        letter.location = (r * math.sin(a), -r * math.cos(a), 0)
+        letter.rotation_euler = (math.radians(90), 0, a)
+        letter.parent = pivot
+    set_parent(pivot, parent)
+    return pivot
+
+
+def build_ground(ball):
+    """The stones are the fixed set that every dog and animation shares; the
+    ball is Ozzie's and only appears with her."""
     stone_mat = glossy_material("stone", STONE, 0.7, 0.0)
     for i, (x, y, s) in enumerate([(-0.36, -0.26, 0.09), (-0.22, -0.38, 0.065), (0.40, -0.20, 0.06)]):
         blob(f"stone{i}", (x, y, s * 0.3), (s * 1.3, s, s * 0.6), stone_mat, segments=24)
+    if not ball:
+        return
     skin, fur = coat_materials("ball", BALL)
     ball = sculpt("ball", [((0.33, -0.40, 0.085), (0.085, 0.085, 0.085))], (skin, fur), resolution=0.01)
     if not ARGS.no_fur:
@@ -823,7 +975,7 @@ def main():
     bpy.context.preferences.edit.keyframe_new_interpolation_type = "LINEAR"
     setup_scene(ARGS.size, ARGS.samples)
     rig = DOGS[ARGS.dog]("lying" if ARGS.mood == "sleepy" else "sitting")
-    build_ground()
+    build_ground(ball=ARGS.dog == "ozzie")
     zzz = build_zzz()
     animate(rig, ARGS.mood, zzz)
     scene = bpy.context.scene
