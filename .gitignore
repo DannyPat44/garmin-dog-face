@@ -9,3 +9,4 @@ internal-mir/
 *.pem
 .DS_Store
 build/
+__pycache__/
