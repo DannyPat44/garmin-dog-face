@@ -4,7 +4,8 @@ Upload `bin/Doggos.iq` (from `make package`) at https://apps-developer.garmin.co
 with the images in this folder (sizes from Garmin's brand guidelines):
 
 - `cover.png`: 500x500 cover image / store icon (under 300 KB)
-- `icon_128.png`: 128x128 on-device icon (full colour, for AMOLED)
+- `icon_128.png`: 128x128 on-device icon, full colour (AMOLED watches)
+- `icon_128_64colors.png`: 128x128 on-device icon in Garmin's 64-colour palette (memory-in-pixel watches)
 - `hero.png`: 1440x720 hero image (under 2 MB)
 - `screenshot_*.png`: 416x416 screen images, one per dog and mood (under 150 KB each)
 
