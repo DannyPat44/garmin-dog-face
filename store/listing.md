@@ -1,7 +1,14 @@
 # Connect IQ Store listing
 
 Upload `bin/Doggos.iq` (from `make package`) at https://apps-developer.garmin.com
-with the screenshots in this folder. The launcher icon is built into the app.
+with the images in this folder (sizes from Garmin's brand guidelines):
+
+- `cover.png`: 500x500 cover image / store icon (under 300 KB)
+- `icon_128.png`: 128x128 on-device icon (full colour, for AMOLED)
+- `hero.png`: 1440x720 hero image (under 2 MB)
+- `screenshot_*.png`: 416x416 screen images, one per dog and mood (under 150 KB each)
+
+The 60x60 launcher icon is built into the app.
 
 ## App name
 Doggos
