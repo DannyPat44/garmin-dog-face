@@ -25,6 +25,7 @@ and loops seamlessly.
 import argparse
 import math
 import sys
+from pathlib import Path
 
 import bmesh
 import bpy
@@ -419,7 +420,7 @@ def build_puppy(pose):
     rig["torso"] = sculpt("body", body, coat_materials("body", BLACK, body_patches), root,
                           fur=(0.045, 7000, 0.5))
     if not lying:
-        name_collar("MILLIE", (0, -0.03, 0.60), 0.17, 20, COLLAR_RED, root)
+        name_collar("MI11IE", (0, -0.03, 0.60), 0.17, 20, COLLAR_RED, root)
 
     # Tail: a short blended chain curling out to the dog's left
     tail_root = empty("tail_root", (0.12, 0.50, 0.15) if lying else (0.12, 0.22, 0.10), root)
@@ -798,6 +799,8 @@ def name_collar(text, loc, radius, tilt, color, parent):
     band.parent = pivot
 
     letter_mat = emissive_material("collar_letters", (1, 1, 1), 0.6)
+    # Fredoka (same as the clock) has a flagged 1 that can't be mistaken for an l
+    font = bpy.data.fonts.load(str(Path(__file__).resolve().parents[1] / "fonts/Fredoka.ttf"))
     size = 0.062
     step = size * 0.70 / (radius + 0.035)
     for i, ch in enumerate(text):
@@ -805,6 +808,7 @@ def name_collar(text, loc, radius, tilt, color, parent):
         bpy.ops.object.text_add()
         letter = bpy.context.active_object
         letter.data.body = ch
+        letter.data.font = font
         letter.data.size = size
         letter.data.extrude = 0.003
         letter.data.offset = 0.0025  # bolder strokes so it reads at watch size
