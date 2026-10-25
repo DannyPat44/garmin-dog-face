@@ -63,7 +63,7 @@ def parse_args():
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
     p = argparse.ArgumentParser()
     p.add_argument("--dog", choices=["puppy", "nova", "ozzie"], default="puppy")
-    p.add_argument("--mood", choices=["awake", "happy", "sleepy"], default="awake")
+    p.add_argument("--mood", choices=["awake", "happy", "sleepy", "walk"], default="awake")
     p.add_argument("--out", help="directory for the PNG frame sequence")
     p.add_argument("--still", help="render only frame 1 to this PNG")
     p.add_argument("--size", type=int, default=480)
@@ -541,10 +541,35 @@ def build_nova(pose):
 def build_ozzie(pose):
     """Ozzie: a red Australian cattle dog mix. Lean and leggy, ginger with a
     darker saddle, white blaze, muzzle, chest and legs, one pricked ear and one
-    folded, and a bushy banded tail with a white tip."""
-    require_sitting("ozzie", pose)
+    folded, and a bushy banded tail with a white tip.
+
+    The walking pose stands her up with four separate legs that swing from the
+    shoulders and hips (fur hides the joins), carrying her ball in her mouth."""
+    if pose == "lying":
+        sys.exit("ozzie: the lying pose isn't modelled yet")
     root = empty("root", (0, 0, 0))
     rig = {"root": root}
+    if pose == "walking":
+        head_pivot = ozzie_standing(rig)
+    else:
+        head_pivot = ozzie_sitting(rig)
+    ozzie_head(rig, head_pivot, ball=pose == "walking")
+    if pose == "walking":
+        head_pivot.scale = (1.25,) * 3
+        head_pivot.location = (0, -0.36, 0.66)
+        # Faces her direction of travel, looking round towards the camera
+        head_pivot.rotation_euler = (math.radians(10), 0, math.radians(-35))
+        root.rotation_euler = (0, 0, math.radians(70))
+        root.location = (-0.05, 0, 0)
+    else:
+        head_pivot.scale = (1.32,) * 3
+        head_pivot.location = (0, -0.06, 0.70)
+        head_pivot.rotation_euler = (0, math.radians(6), 0)
+    return rig
+
+
+def ozzie_sitting(rig):
+    root = rig["root"]
     body = [
         ((0, 0.03, 0.45), (0.19, 0.18, 0.26), (-8, 0, 0)),
         ((0, 0.10, 0.21), (0.20, 0.21, 0.14)),
@@ -580,8 +605,63 @@ def build_ozzie(pose):
     tail_patches = [(EAR_DARK, tuple(base + Vector(steps[5])), (0.08, 0.08, 0.05)),
                     (WHITE, tuple(base + Vector(steps[7])), (0.07, 0.07, 0.06))]
     sculpt("tail", tail, coat_materials("tail", RED, tail_patches), tail_root, fur=(0.06, 9000, 0.3))
+    return empty("head_pivot", (0, -0.05, 0.95), root)
 
-    head_pivot = empty("head_pivot", (0, -0.05, 0.95), root)
+
+def ozzie_standing(rig):
+    """Standing on all fours, facing -Y like every other pose; the root turns
+    her side-on afterwards. Each leg hangs from a pivot at its top."""
+    root = rig["root"]
+    body = [
+        ((0, -0.15, 0.43), (0.15, 0.17, 0.16)),
+        ((0, 0.03, 0.43), (0.14, 0.18, 0.14)),
+        ((0, 0.21, 0.44), (0.14, 0.15, 0.14)),
+        ((0, -0.29, 0.56), (0.11, 0.12, 0.15), (-30, 0, 0)),
+    ]
+    body_patches = [
+        (DARK_RED, (0, 0.05, 0.57), (0.18, 0.32, 0.08)),
+        (WHITE, (0, -0.30, 0.44), (0.10, 0.10, 0.15)),
+        (WHITE, (0, -0.02, 0.29), (0.12, 0.24, 0.06)),
+    ]
+    rig["torso"] = sculpt("body", body, coat_materials("body", RED, body_patches), root,
+                          fur=(0.03, 7000, 0.5))
+
+    rig["legs"] = {}
+    for side in (-1, 1):
+        x, y = side * 0.085, -0.17
+        front = [((x, y, 0.32), (0.055, 0.06, 0.10)),
+                 ((x, y - 0.01, 0.16), (0.04, 0.04, 0.11)),
+                 ((x, y - 0.04, 0.03), (0.05, 0.07, 0.03))]
+        rig["legs"][("front", side)] = leg(f"front_leg{side}", (x, y, 0.42), front, RED,
+                                           [(WHITE, (x, y, 0.12), (0.08, 0.09, 0.17))], root)
+        x, y = side * 0.09, 0.22
+        hind = [((x, y, 0.32), (0.07, 0.10, 0.12)),
+                ((x, y + 0.04, 0.15), (0.04, 0.045, 0.10), (-12, 0, 0)),
+                ((x, y + 0.01, 0.03), (0.05, 0.07, 0.03))]
+        rig["legs"][("hind", side)] = leg(f"hind_leg{side}", (x, y, 0.42), hind, RED,
+                                          [(WHITE, (x, y + 0.02, 0.07), (0.08, 0.10, 0.12))], root)
+
+    # Bushy tail held up and curling forward over the back
+    tail_root = empty("tail_root", (0, 0.33, 0.48), root)
+    rig["tail"] = tail_root
+    base = Vector(tail_root.location)
+    steps = [(0, 0.0, 0.0), (0, 0.05, 0.04), (0, 0.08, 0.10), (0, 0.08, 0.16),
+             (0, 0.05, 0.21), (0, 0.0, 0.24), (0, -0.04, 0.24), (0, -0.07, 0.22)]
+    tail = [(tuple(base + Vector(d)), (0.055, 0.055, 0.06)) for d in steps]
+    tail_patches = [(EAR_DARK, tuple(base + Vector(steps[5])), (0.08, 0.08, 0.05)),
+                    (WHITE, tuple(base + Vector(steps[7])), (0.07, 0.07, 0.06))]
+    sculpt("tail", tail, coat_materials("tail", RED, tail_patches), tail_root, fur=(0.06, 9000, 0.3))
+    return empty("head_pivot", (0, -0.05, 0.95), root)
+
+
+def leg(name, top, elements, base, patches, parent):
+    """A leg that swings from a pivot at its top (shoulder or hip)."""
+    pivot = empty(f"{name}_pivot", top, parent)
+    sculpt(name, elements, coat_materials(name, base, patches), pivot, fur=(0.022, 7000, 0.5))
+    return pivot
+
+
+def ozzie_head(rig, head_pivot, ball):
     rig["head"] = head_pivot
     head = [
         ((0, -0.04, 1.18), (0.20, 0.19, 0.18)),
@@ -603,11 +683,10 @@ def build_ozzie(pose):
     add_face(rig, head_mesh, head_pivot, nose_z=1.07, eye_x=0.095, eye_z=1.17, eye_r=0.048)
     rig["ears"] = [prick_ear(1, (0.13, -0.02, 1.30), head_pivot),
                    folded_ear(-1, (-0.13, -0.02, 1.30), head_pivot)]
-
-    head_pivot.scale = (1.32,) * 3
-    head_pivot.location = (0, -0.06, 0.70)
-    head_pivot.rotation_euler = (0, math.radians(6), 0)
-    return rig
+    if ball:
+        # Held in her mouth, just under the nose; sized to match the ball on
+        # the ground once the head is scaled up
+        rig["ball"] = tennis_ball((0, -0.385, 0.975), 0.068, head_pivot)
 
 
 DOGS = {"puppy": build_puppy, "nova": build_nova, "ozzie": build_ozzie}
@@ -829,12 +908,16 @@ def build_ground(ball):
     stone_mat = glossy_material("stone", STONE, 0.7, 0.0)
     for i, (x, y, s) in enumerate([(-0.36, -0.26, 0.09), (-0.22, -0.38, 0.065), (0.40, -0.20, 0.06)]):
         blob(f"stone{i}", (x, y, s * 0.3), (s * 1.3, s, s * 0.6), stone_mat, segments=24)
-    if not ball:
-        return
+    if ball:
+        tennis_ball((0.33, -0.40, 0.085), 0.085)
+
+
+def tennis_ball(centre, radius, parent=None):
     skin, fur = coat_materials("ball", BALL)
-    ball = sculpt("ball", [((0.33, -0.40, 0.085), (0.085, 0.085, 0.085))], (skin, fur), resolution=0.01)
+    ball = sculpt("ball", [(centre, (radius,) * 3)], (skin, fur), parent, resolution=0.01)
     if not ARGS.no_fur:
-        add_fur(ball, fur, 0.008, 40000, 0.0)
+        add_fur(ball, fur, radius * 0.094, 40000, 0.0)
+    return ball
 
 
 def build_zzz():
@@ -961,15 +1044,50 @@ def animate(rig, mood, zzz):
         z.hide_render = mood != "sleepy"
 
 
+# Walk: legs move in the order left hind, left front, right hind, right front
+WALK_PHASES = {("hind", -1): 0.0, ("front", -1): 0.25, ("hind", 1): 0.5, ("front", 1): 0.75}
+STRIDES = 3
+
+
+def animate_walk(rig):
+    """A walk cycle in place: STRIDES strides per loop. Each leg swings about
+    its top and shortens a little while it swings forward so the paw clears
+    the ground; the body bobs twice per stride."""
+    head_rest = tuple(rig["head"].rotation_euler)
+    root_rest = tuple(rig["root"].location)
+    for f in range(1, FRAMES + 1):
+        for key_, pivot in rig["legs"].items():
+            phi = 2 * math.pi * (STRIDES * (f - 1) / FRAMES + WALK_PHASES[key_])
+            swing = math.radians(24) * math.sin(phi)
+            # Forward swing is while the angle is falling (cos < 0)
+            lift = max(0.0, -math.cos(phi))
+            key(pivot, "rotation_euler", f, (swing, 0, 0))
+            key(pivot, "scale", f, (1, 1, 1 - 0.14 * lift))
+        bob = 0.012 * wave(f, 2 * STRIDES)
+        key(rig["root"], "location", f, (root_rest[0], root_rest[1], root_rest[2] + bob))
+        nod = math.radians(3) * wave(f, 2 * STRIDES, 0.15)
+        key(rig["head"], "rotation_euler", f, (head_rest[0] + nod, head_rest[1], head_rest[2]))
+        key(rig["tail"], "rotation_euler", f, (0, 0, math.radians(18) * wave(f, STRIDES)))
+        for i, ear in enumerate(rig["ears"]):
+            key(ear, "rotation_euler", f, (0, math.radians(4) * wave(f, 2 * STRIDES, 0.3 + i * 0.1), 0))
+    rig["tongue"].hide_render = True
+
+
 def main():
     bpy.ops.wm.read_factory_settings(use_empty=True)
     # Every frame is keyed, so linear keys reproduce the curves exactly
     bpy.context.preferences.edit.keyframe_new_interpolation_type = "LINEAR"
     setup_scene(ARGS.size, ARGS.samples)
-    rig = DOGS[ARGS.dog]("lying" if ARGS.mood == "sleepy" else "sitting")
-    build_ground(ball=ARGS.dog == "ozzie")
+    pose = {"sleepy": "lying", "walk": "walking"}.get(ARGS.mood, "sitting")
+    rig = DOGS[ARGS.dog](pose)
+    build_ground(ball=ARGS.dog == "ozzie" and pose != "walking")
     zzz = build_zzz()
-    animate(rig, ARGS.mood, zzz)
+    if ARGS.mood == "walk":
+        animate_walk(rig)
+    else:
+        animate(rig, ARGS.mood, zzz)
+    for z in zzz:
+        z.hide_render = ARGS.mood != "sleepy"
     scene = bpy.context.scene
     if ARGS.blend:
         bpy.ops.wm.save_as_mainfile(filepath=ARGS.blend)
