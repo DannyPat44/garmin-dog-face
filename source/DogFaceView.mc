@@ -2,6 +2,7 @@ import Toybox.Activity;
 import Toybox.ActivityMonitor;
 import Toybox.Graphics;
 import Toybox.Lang;
+import Toybox.Math;
 import Toybox.System;
 import Toybox.Time;
 import Toybox.Time.Gregorian;
@@ -24,8 +25,10 @@ class DogAnimationDelegate extends WatchUi.AnimationDelegate {
     }
 }
 
-// Watch face with an animated 3D puppy whose mood follows the day:
-// sleepy overnight, happy once the step goal is met, awake otherwise.
+// Watch face with three animated 3D dogs (Millie, Nova and Ozzie) taking
+// turns: a different dog, picked at random, each hour. Her mood follows the
+// day: sleepy overnight, happy once the step goal is met, awake otherwise.
+// Dogs only swap while the screen is off, so nobody sees the change.
 // The animation loops while the screen is awake (the system stops it when
 // the watch goes to sleep); in between, the first frame is drawn as a still
 // so the face never looks empty. The clock and stats are drawn on a layer
@@ -40,7 +43,12 @@ class DogFaceView extends WatchUi.WatchFace {
     private const CLOCK_GAP = 6;
 
     private var _mood as Symbol?;
-    private var _dog as BitmapResource?;
+    private var _dog as Number = 0;
+    private var _dogHour as Number = -1;
+    // [dog][mood] with moods in the order awake, happy, sleepy
+    private var _stills as Array<Array<ResourceId> >;
+    private var _animations as Array<Array<ResourceId> >;
+    private var _still as BitmapResource?;
     private var _animation as AnimationLayer?;
     private var _face as Layer?;
     private var _dogX as Number = 0;
@@ -55,6 +63,18 @@ class DogFaceView extends WatchUi.WatchFace {
         WatchFace.initialize();
         var settings = System.getDeviceSettings();
         _burnInProtection = (settings has :requiresBurnInProtection) && settings.requiresBurnInProtection;
+        Math.srand(Time.now().value() + System.getTimer());
+        _dog = Math.rand() % 3;
+        _stills = [
+            [Rez.Drawables.MillieAwake, Rez.Drawables.MillieHappy, Rez.Drawables.MillieSleepy],
+            [Rez.Drawables.NovaAwake, Rez.Drawables.NovaHappy, Rez.Drawables.NovaSleepy],
+            [Rez.Drawables.OzzieAwake, Rez.Drawables.OzzieHappy, Rez.Drawables.OzzieSleepy],
+        ];
+        _animations = [
+            [Rez.Drawables.MillieAwakeAnimation, Rez.Drawables.MillieHappyAnimation, Rez.Drawables.MillieSleepyAnimation],
+            [Rez.Drawables.NovaAwakeAnimation, Rez.Drawables.NovaHappyAnimation, Rez.Drawables.NovaSleepyAnimation],
+            [Rez.Drawables.OzzieAwakeAnimation, Rez.Drawables.OzzieHappyAnimation, Rez.Drawables.OzzieSleepyAnimation],
+        ];
     }
 
     function onLayout(dc as Dc) as Void {
@@ -67,11 +87,13 @@ class DogFaceView extends WatchUi.WatchFace {
         var face = new WatchUi.Layer({:locX => 0, :locY => 0, :width => dc.getWidth(), :height => dc.getHeight()});
         addLayer(face);
         _face = face;
+        _dogHour = System.getClockTime().hour;
         setMood(currentMood(System.getClockTime(), ActivityMonitor.getInfo()));
     }
 
     // Playback starts from onUpdate, once the face layer is current
     function onShow() as Void {
+        nextDogIfDue();
         WatchUi.requestUpdate();
     }
 
@@ -103,9 +125,9 @@ class DogFaceView extends WatchUi.WatchFace {
             setMood(mood);
         }
 
-        var dog = _dog;
-        if (dog != null) {
-            dc.drawBitmap(_dogX, _dogY, dog);
+        var still = _still;
+        if (still != null) {
+            dc.drawBitmap(_dogX, _dogY, still);
         }
         drawFace(faceDc, clock, activity);
         if (!_playing) {
@@ -162,6 +184,7 @@ class DogFaceView extends WatchUi.WatchFace {
 
     function onExitSleep() as Void {
         _lowPower = false;
+        nextDogIfDue();
         WatchUi.requestUpdate();
     }
 
@@ -190,21 +213,27 @@ class DogFaceView extends WatchUi.WatchFace {
         }
     }
 
-    // Swap in the still and the animation for a new mood, keeping only one
-    // of each loaded.
+    // Called only while the dog isn't on screen (waking up or coming back to
+    // the face): once the hour has turned, one of the other two dogs takes over.
+    private function nextDogIfDue() as Void {
+        var hour = System.getClockTime().hour;
+        if (hour == _dogHour || _mood == null) {
+            return;
+        }
+        _dogHour = hour;
+        _dog = (_dog + 1 + Math.rand() % 2) % 3;
+        setMood(currentMood(System.getClockTime(), ActivityMonitor.getInfo()));
+    }
+
+    // Swap in the current dog's still and animation for a mood, keeping only
+    // one of each loaded.
     private function setMood(mood as Symbol) as Void {
         _mood = mood;
-        var stillId = Rez.Drawables.DogAwake;
-        var animationId = Rez.Drawables.DogAwakeAnimation;
-        if (mood == :sleepy) {
-            stillId = Rez.Drawables.DogSleepy;
-            animationId = Rez.Drawables.DogSleepyAnimation;
-        } else if (mood == :happy) {
-            stillId = Rez.Drawables.DogHappy;
-            animationId = Rez.Drawables.DogHappyAnimation;
-        }
-        _dog = null;
-        _dog = WatchUi.loadResource(stillId) as BitmapResource;
+        var index = mood == :happy ? 1 : (mood == :sleepy ? 2 : 0);
+        var stillId = _stills[_dog][index];
+        var animationId = _animations[_dog][index];
+        _still = null;
+        _still = WatchUi.loadResource(stillId) as BitmapResource;
 
         var old = _animation;
         if (old != null) {

@@ -1,7 +1,13 @@
 <drawables>
     <bitmap id="LauncherIcon" filename="launcher_icon.png" />
     <!-- First frame of each animation, drawn while the animation is idle -->
-    <bitmap id="DogAwake" filename="dog_awake.png" />
-    <bitmap id="DogHappy" filename="dog_happy.png" />
-    <bitmap id="DogSleepy" filename="dog_sleepy.png" />
+    <bitmap id="MillieAwake" filename="millie_awake.png" />
+    <bitmap id="MillieHappy" filename="millie_happy.png" />
+    <bitmap id="MillieSleepy" filename="millie_sleepy.png" />
+    <bitmap id="NovaAwake" filename="nova_awake.png" />
+    <bitmap id="NovaHappy" filename="nova_happy.png" />
+    <bitmap id="NovaSleepy" filename="nova_sleepy.png" />
+    <bitmap id="OzzieAwake" filename="ozzie_awake.png" />
+    <bitmap id="OzzieHappy" filename="ozzie_happy.png" />
+    <bitmap id="OzzieSleepy" filename="ozzie_sleepy.png" />
 </drawables>
