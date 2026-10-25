@@ -477,36 +477,60 @@ def build_puppy(pose):
 
 def build_nova(pose):
     """Nova: a golden long-haired dachshund. Sitting up on a long chest with
-    short legs, a long narrow muzzle, and long silky feathered ears and tail."""
-    require_sitting("nova", pose)
+    short legs, a long narrow muzzle, and long silky feathered ears and tail.
+    Lying, she stretches out long and low with her chin on her front paws."""
+    if pose == "walking":
+        sys.exit("nova: the walking pose isn't modelled yet")
+    lying = pose == "lying"
     root = empty("root", (0, 0, 0))
     rig = {"root": root}
-    body = [
+    if lying:
+        body = [
+            ((0, 0.18, 0.18), (0.21, 0.36, 0.15)),
+            ((0, -0.10, 0.20), (0.18, 0.16, 0.14)),
+            ((0, -0.16, 0.27), (0.13, 0.12, 0.12)),
+        ]
+        for side in (-1, 1):
+            body += [
+                ((side * 0.15, 0.36, 0.12), (0.11, 0.15, 0.10)),
+                ((side * 0.09, -0.26, 0.045), (0.055, 0.12, 0.045)),
+                ((side * 0.09, -0.36, 0.04), (0.06, 0.08, 0.04)),
+                ((side * 0.20, 0.22, 0.04), (0.055, 0.09, 0.04)),
+            ]
+        body_patches = [(CREAM, (0, -0.20, 0.16), (0.13, 0.14, 0.10))]
+    else:
+        body = [
         ((0, 0.01, 0.43), (0.22, 0.21, 0.26), (-10, 0, 0)),
         ((0, 0.12, 0.18), (0.24, 0.26, 0.15)),
         ((0, -0.05, 0.66), (0.15, 0.14, 0.13)),
-    ]
-    for side in (-1, 1):
-        body += [
-            ((side * 0.16, 0.14, 0.14), (0.12, 0.16, 0.11)),
-            ((side * 0.09, -0.15, 0.11), (0.055, 0.055, 0.09)),
-            ((side * 0.09, -0.20, 0.035), (0.06, 0.08, 0.035)),
-            ((side * 0.21, -0.04, 0.035), (0.055, 0.09, 0.035)),
         ]
-    body_patches = [
-        (CREAM, (0, -0.18, 0.45), (0.12, 0.10, 0.28)),
-        (CREAM, (0, -0.10, 0.66), (0.08, 0.07, 0.11)),
-    ]
+        for side in (-1, 1):
+            body += [
+                ((side * 0.16, 0.14, 0.14), (0.12, 0.16, 0.11)),
+                ((side * 0.09, -0.15, 0.11), (0.055, 0.055, 0.09)),
+                ((side * 0.09, -0.20, 0.035), (0.06, 0.08, 0.035)),
+                ((side * 0.21, -0.04, 0.035), (0.055, 0.09, 0.035)),
+            ]
+        body_patches = [
+            (CREAM, (0, -0.18, 0.45), (0.12, 0.10, 0.28)),
+            (CREAM, (0, -0.10, 0.66), (0.08, 0.07, 0.11)),
+        ]
     # Silky coat that lies flat; the long feathering is on the ears and tail
     rig["torso"] = sculpt("body", body, coat_materials("body", GOLD, body_patches), root,
                           fur=(0.032, 7000, 0.8))
 
-    tail_root = empty("tail_root", (0.10, 0.30, 0.08), root)
+    if lying:
+        # Lies along the ground, curving round her hip
+        tail_root = empty("tail_root", (0.10, 0.52, 0.10), root)
+        steps = [(0.0, 0.0, 0.0), (0.05, 0.03, -0.02), (0.11, 0.03, -0.04), (0.17, 0.0, -0.05),
+                 (0.22, -0.05, -0.05)]
+    else:
+        tail_root = empty("tail_root", (0.10, 0.30, 0.08), root)
+        steps = [(0.0, 0.0, 0.0), (0.05, 0.02, 0.0), (0.10, 0.04, 0.02), (0.15, 0.04, 0.04),
+                 (0.20, 0.02, 0.07), (0.25, -0.01, 0.10)]
     rig["tail"] = tail_root
     base = Vector(tail_root.location)
-    tail = [(tuple(base + Vector(d)), (0.045, 0.045, 0.05)) for d in
-            [(0.0, 0.0, 0.0), (0.05, 0.02, 0.0), (0.10, 0.04, 0.02), (0.15, 0.04, 0.04),
-             (0.20, 0.02, 0.07), (0.25, -0.01, 0.10)]]
+    tail = [(tuple(base + Vector(d)), (0.045, 0.045, 0.05)) for d in steps]
     sculpt("tail", tail, coat_materials("tail", GOLD), tail_root, fur=(0.08, 9000, 0.7))
 
     head_pivot = empty("head_pivot", (0, -0.05, 0.95), root)
@@ -531,8 +555,14 @@ def build_nova(pose):
     sombrero((0, -0.05, 1.31), (14, 10, 0), head_pivot)
 
     head_pivot.scale = (1.30,) * 3
-    head_pivot.location = (0, -0.07, 0.68)
-    head_pivot.rotation_euler = (0, math.radians(6), math.radians(-18))
+    if lying:
+        head_pivot.location = (0, -0.34, 0.17)
+        head_pivot.rotation_euler = (math.radians(14), math.radians(-14), math.radians(12))
+        root.rotation_euler = (0, 0, math.radians(-38))
+        root.location = (0.14, 0.18, 0)
+    else:
+        head_pivot.location = (0, -0.07, 0.68)
+        head_pivot.rotation_euler = (0, math.radians(6), math.radians(-18))
     # She's the smallest dog, which also leaves room under the clock for the hat
     root.scale = (0.88,) * 3
     return rig
@@ -545,12 +575,12 @@ def build_ozzie(pose):
 
     The walking pose stands her up with four separate legs that swing from the
     shoulders and hips (fur hides the joins), carrying her ball in her mouth."""
-    if pose == "lying":
-        sys.exit("ozzie: the lying pose isn't modelled yet")
     root = empty("root", (0, 0, 0))
     rig = {"root": root}
     if pose == "walking":
         head_pivot = ozzie_standing(rig)
+    elif pose == "lying":
+        head_pivot = ozzie_lying(rig)
     else:
         head_pivot = ozzie_sitting(rig)
     ozzie_head(rig, head_pivot, ball=pose == "walking")
@@ -561,6 +591,13 @@ def build_ozzie(pose):
         head_pivot.rotation_euler = (math.radians(10), 0, math.radians(-35))
         root.rotation_euler = (0, 0, math.radians(70))
         root.location = (-0.05, 0, 0)
+    elif pose == "lying":
+        # Chin on her front paws, like Millie
+        head_pivot.scale = (1.32,) * 3
+        head_pivot.location = (0, -0.31, 0.21)
+        head_pivot.rotation_euler = (math.radians(14), math.radians(-14), math.radians(12))
+        root.rotation_euler = (0, 0, math.radians(-38))
+        root.location = (0.14, 0.18, 0)
     else:
         head_pivot.scale = (1.32,) * 3
         head_pivot.location = (0, -0.06, 0.70)
@@ -604,6 +641,45 @@ def ozzie_sitting(rig):
     tail = [(tuple(base + Vector(d)), (0.055, 0.055, 0.06)) for d in steps]
     tail_patches = [(EAR_DARK, tuple(base + Vector(steps[5])), (0.08, 0.08, 0.05)),
                     (WHITE, tuple(base + Vector(steps[7])), (0.07, 0.07, 0.06))]
+    sculpt("tail", tail, coat_materials("tail", RED, tail_patches), tail_root, fur=(0.06, 9000, 0.3))
+    return empty("head_pivot", (0, -0.05, 0.95), root)
+
+
+def ozzie_lying(rig):
+    root = rig["root"]
+    body = [
+        ((0, 0.20, 0.20), (0.20, 0.34, 0.16)),
+        ((0, -0.06, 0.25), (0.17, 0.15, 0.16)),
+        ((0, -0.12, 0.33), (0.13, 0.13, 0.13)),
+    ]
+    for side in (-1, 1):
+        body += [
+            ((side * 0.15, 0.38, 0.15), (0.11, 0.17, 0.12)),
+            ((side * 0.09, -0.20, 0.06), (0.055, 0.19, 0.055)),
+            ((side * 0.09, -0.42, 0.045), (0.06, 0.09, 0.045)),
+            ((side * 0.21, 0.20, 0.045), (0.06, 0.10, 0.045)),
+        ]
+    body_patches = [
+        (DARK_RED, (0, 0.20, 0.36), (0.22, 0.34, 0.10)),
+        (WHITE, (0, -0.16, 0.20), (0.13, 0.15, 0.12)),
+    ]
+    for side in (-1, 1):
+        body_patches += [
+            (WHITE, (side * 0.09, -0.32, 0.06), (0.08, 0.18, 0.08)),
+            (WHITE, (side * 0.21, 0.20, 0.045), (0.08, 0.12, 0.07)),
+        ]
+    rig["torso"] = sculpt("body", body, coat_materials("body", RED, body_patches), root,
+                          fur=(0.03, 7000, 0.5))
+
+    # Tail curled round on the ground beside her
+    tail_root = empty("tail_root", (0.12, 0.52, 0.14), root)
+    rig["tail"] = tail_root
+    base = Vector(tail_root.location)
+    steps = [(0.0, 0.0, 0.0), (0.06, 0.04, -0.03), (0.13, 0.03, -0.06), (0.19, -0.02, -0.08),
+             (0.23, -0.09, -0.09), (0.24, -0.16, -0.09)]
+    tail = [(tuple(base + Vector(d)), (0.055, 0.055, 0.055)) for d in steps]
+    tail_patches = [(EAR_DARK, tuple(base + Vector(steps[4])), (0.07, 0.07, 0.06)),
+                    (WHITE, tuple(base + Vector(steps[5])), (0.07, 0.07, 0.06))]
     sculpt("tail", tail, coat_materials("tail", RED, tail_patches), tail_root, fur=(0.06, 9000, 0.3))
     return empty("head_pivot", (0, -0.05, 0.95), root)
 

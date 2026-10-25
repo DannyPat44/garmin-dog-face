@@ -15,7 +15,7 @@ HEIGHT=249
 FPS=10
 
 for mood in awake happy sleepy; do
-    frames="build/frames/$mood/%04d.png"
+    frames="build/frames/puppy/$mood/%04d.png"
     # Flatten onto black (the watch background) and quantise to a GIF for Monkey Motion
     ffmpeg -v error -y -framerate $FPS -i "$frames" -f lavfi -i "color=black:s=400x400:r=$FPS" -filter_complex \
         "[1][0]overlay=shortest=1,crop=$CROP,scale=$WIDTH:$HEIGHT:flags=lanczos,split[a][b];[a]palettegen=stats_mode=full[p];[b][p]paletteuse=dither=sierra2_4a" \
@@ -23,10 +23,10 @@ for mood in awake happy sleepy; do
     rm -rf "resources/animations/dog_$mood"
     bash "${SDK}bin/monkeym" -v "build/$mood.gif" -d fr265 -r ${WIDTH}x${HEIGHT} -f $FPS \
         -o "resources/animations/dog_$mood" > "build/monkeym_$mood.log"
-    ffmpeg -v error -y -i "build/frames/$mood/0001.png" -vf "crop=$CROP,scale=$WIDTH:$HEIGHT:flags=lanczos" \
+    ffmpeg -v error -y -i "build/frames/puppy/$mood/0001.png" -vf "crop=$CROP,scale=$WIDTH:$HEIGHT:flags=lanczos" \
         "resources/drawables/dog_$mood.png"
     echo "built $mood"
 done
 
-ffmpeg -v error -y -f lavfi -i "color=black:s=400x400" -i build/frames/happy/0001.png -filter_complex \
+ffmpeg -v error -y -f lavfi -i "color=black:s=400x400" -i build/frames/puppy/happy/0001.png -filter_complex \
     "[0][1]overlay,crop=240:240:80:50,scale=60:60:flags=lanczos" -frames:v 1 resources/drawables/launcher_icon.png
