@@ -17,7 +17,7 @@ FPS=10
 for mood in awake happy sleepy; do
     frames="build/frames/$mood/%04d.png"
     # Flatten onto black (the watch background) and quantise to a GIF for Monkey Motion
-    ffmpeg -v error -y -framerate $FPS -i "$frames" -f lavfi -i "color=black:s=400x400" -filter_complex \
+    ffmpeg -v error -y -framerate $FPS -i "$frames" -f lavfi -i "color=black:s=400x400:r=$FPS" -filter_complex \
         "[1][0]overlay=shortest=1,crop=$CROP,scale=$WIDTH:$HEIGHT:flags=lanczos,split[a][b];[a]palettegen=stats_mode=full[p];[b][p]paletteuse=dither=sierra2_4a" \
         "build/$mood.gif"
     rm -rf "resources/animations/dog_$mood"
