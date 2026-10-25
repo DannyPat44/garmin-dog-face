@@ -43,10 +43,11 @@ NOSE = (0.012, 0.010, 0.010)
 IRIS = (0.05, 0.020, 0.008)
 TONGUE = (0.80, 0.25, 0.30)
 # Nova, golden long-haired dachshund
-GOLD = (0.60, 0.38, 0.16)
-LIGHT_GOLD = (0.72, 0.52, 0.28)
+GOLD = (0.36, 0.15, 0.045)
+LIGHT_GOLD = (0.55, 0.32, 0.13)
 CREAM = (0.78, 0.62, 0.40)
-AMBER = (0.24, 0.11, 0.035)
+AMBER = (0.11, 0.045, 0.014)
+SADDLE = (0.20, 0.08, 0.025)
 # Ozzie, red cattle dog mix
 RED = (0.42, 0.17, 0.06)
 DARK_RED = (0.15, 0.06, 0.025)
@@ -497,7 +498,10 @@ def build_nova(pose):
                 ((side * 0.09, -0.36, 0.04), (0.06, 0.08, 0.04)),
                 ((side * 0.20, 0.22, 0.04), (0.055, 0.09, 0.04)),
             ]
-        body_patches = [(CREAM, (0, -0.20, 0.16), (0.13, 0.14, 0.10))]
+        body_patches = [
+            (SADDLE, (0, 0.18, 0.33), (0.22, 0.40, 0.09)),
+            (CREAM, (0, -0.20, 0.16), (0.13, 0.14, 0.10)),
+        ]
     else:
         body = [
         ((0, 0.01, 0.43), (0.22, 0.21, 0.26), (-10, 0, 0)),
@@ -511,7 +515,9 @@ def build_nova(pose):
                 ((side * 0.09, -0.20, 0.035), (0.06, 0.08, 0.035)),
                 ((side * 0.21, -0.04, 0.035), (0.055, 0.09, 0.035)),
             ]
+        # Darker along the back, pale chest, so her shape reads on black
         body_patches = [
+            (SADDLE, (0, 0.20, 0.50), (0.26, 0.13, 0.30)),
             (CREAM, (0, -0.18, 0.45), (0.12, 0.10, 0.28)),
             (CREAM, (0, -0.10, 0.66), (0.08, 0.07, 0.11)),
         ]
@@ -531,7 +537,7 @@ def build_nova(pose):
     rig["tail"] = tail_root
     base = Vector(tail_root.location)
     tail = [(tuple(base + Vector(d)), (0.045, 0.045, 0.05)) for d in steps]
-    sculpt("tail", tail, coat_materials("tail", GOLD), tail_root, fur=(0.08, 9000, 0.7))
+    sculpt("tail", tail, coat_materials("tail", SADDLE), tail_root, fur=(0.08, 9000, 0.7))
 
     head_pivot = empty("head_pivot", (0, -0.05, 0.95), root)
     rig["head"] = head_pivot
@@ -1077,13 +1083,27 @@ def wave(frame, cycles, phase=0.0):
     return math.sin(2 * math.pi * (cycles * (frame - 1) / FRAMES + phase))
 
 
+def pulse(frame, centre, width):
+    """A quick bump peaking at `centre`, for one-off twitches in a loop."""
+    return math.exp(-((frame - centre) / width) ** 2)
+
+
 def animate(rig, mood, zzz):
     torso = rig["torso"]
     base_scale = tuple(torso.scale)
     head_rest = tuple(rig["head"].rotation_euler)
+    head_loc = tuple(rig["head"].location)
     for f in range(1, FRAMES + 1):
-        breath = 0.010 * wave(f, 1 if mood == "sleepy" else 2)
-        key(torso, "scale", f, (base_scale[0] * (1 + breath), base_scale[1] * (1 + breath), base_scale[2] * (1 + breath * 0.5)))
+        if mood == "sleepy":
+            # One slow, deep breath per loop: the back rises and the head
+            # lifts with it
+            breath = 0.035 * wave(f, 1)
+            key(torso, "scale", f, (base_scale[0] * (1 + breath * 0.6), base_scale[1] * (1 + breath * 0.3),
+                                    base_scale[2] * (1 + breath)))
+            key(rig["head"], "location", f, (head_loc[0], head_loc[1], head_loc[2] + 0.4 * breath))
+        else:
+            breath = 0.010 * wave(f, 2)
+            key(torso, "scale", f, (base_scale[0] * (1 + breath), base_scale[1] * (1 + breath), base_scale[2] * (1 + breath * 0.5)))
 
         if mood == "awake":
             tilt = math.radians(14) * max(0.0, wave(f, 1, 0.0)) ** 1.5
@@ -1095,8 +1115,9 @@ def animate(rig, mood, zzz):
             blink = 0.7
             key(rig["root"], "location", f, (0, 0, 0.025 * abs(wave(f, 2))))
         else:
-            tilt = 0.0
-            wag = math.radians(6) * wave(f, 1)
+            # Dreaming: the head nods with each breath and the tail thumps once
+            tilt = math.radians(3) * wave(f, 1, 0.1)
+            wag = math.radians(8) * wave(f, 1) + math.radians(22) * (pulse(f, 19, 1.4) - 0.6 * pulse(f, 22, 1.4))
             blink = 0.06
 
         key(rig["head"], "rotation_euler", f, (head_rest[0], head_rest[1] + tilt, head_rest[2]))
@@ -1105,7 +1126,10 @@ def animate(rig, mood, zzz):
             key(eye, "scale", f, (1, 1, blink))
         for i, ear in enumerate(rig["ears"]):
             # Ears lag the head a little and flop the other way
-            flop = -0.6 * tilt + (math.radians(8) * max(0.0, wave(f, 1, 0.3)) if mood == "sleepy" and i == 1 else 0)
+            flop = -0.6 * tilt
+            if mood == "sleepy":
+                # A dreamy twitch of one ear, then the other a little later
+                flop += math.radians(18) * pulse(f, 8 if i == 1 else 12, 1.2)
             key(ear, "rotation_euler", f, (0, flop, 0))
 
         if mood == "sleepy":
