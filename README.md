@@ -1,4 +1,4 @@
-# Dog Face
+# Doggos
 
 A Connect IQ watch face for the Garmin Forerunner 265 where three fluffy,
 animated 3D dogs take turns on your wrist. Every dog is modelled in code and
@@ -60,7 +60,7 @@ brew install ffmpeg libmtp openjdk@17
 |---|---|
 | `make run` | Build and open in the simulator |
 | `make install` | Build and copy onto a USB-connected watch (close Garmin Express first) |
-| `make package` | Build `bin/DogFace.iq` for the Connect IQ Store |
+| `make package` | Build `bin/Doggos.iq` for the Connect IQ Store |
 | `make frames` | Render every dog's moods with Blender into `build/frames/` (~30 min; `DOGS=nova MOODS=happy` narrows it) |
 | `make preview` | Watch-size review GIFs in `build/review/`, plus a grid of all of them |
 | `make art` | Encode rendered frames into the watch resources and `source/Dogs.mc` |

@@ -1,10 +1,10 @@
 # Connect IQ Store listing
 
-Upload `bin/DogFace.iq` (from `make package`) at https://apps-developer.garmin.com
+Upload `bin/Doggos.iq` (from `make package`) at https://apps-developer.garmin.com
 with the screenshots in this folder. The launcher icon is built into the app.
 
 ## App name
-Dog Face
+Doggos
 
 ## Category
 Watch Faces

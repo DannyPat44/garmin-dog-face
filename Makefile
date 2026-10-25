@@ -5,7 +5,7 @@ JAVA_HOME ?= /opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home
 export JAVA_HOME
 DEVICE ?= fr265
 KEY ?= $(HOME)/workspace/garmin/keys/developer_key.der
-APP := DogFace
+APP := Doggos
 
 .PHONY: build run install package art frames preview rig
 
