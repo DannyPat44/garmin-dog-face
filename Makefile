@@ -7,7 +7,7 @@ DEVICE ?= fr265
 KEY ?= $(HOME)/workspace/garmin/keys/developer_key.der
 APP := Doggos
 
-.PHONY: build run install package art frames preview rig rig-preview
+.PHONY: build run test install package art frames preview rig rig-preview
 
 build:
 	"$(SDK)bin/monkeyc" -f monkey.jungle -d $(DEVICE) -y "$(KEY)" -o bin/$(APP).prg -w
@@ -15,6 +15,13 @@ build:
 run: build
 	@pgrep -qf ConnectIQ.app || { "$(SDK)bin/connectiq"; until pgrep -qf ConnectIQ.app; do sleep 1; done; sleep 2; }
 	"$(SDK)bin/monkeydo" bin/$(APP).prg $(DEVICE)
+
+# Unit tests (test/) run in the simulator; add TEST=name for one test
+test:
+	"$(SDK)bin/monkeyc" -f monkey.jungle -d $(DEVICE) -y "$(KEY)" -o bin/$(APP)Test.prg -w -t
+	@pgrep -qf ConnectIQ.app || { "$(SDK)bin/connectiq"; until pgrep -qf ConnectIQ.app; do sleep 1; done; sleep 2; }
+	@# monkeydo exits non-zero even when every test passes, so judge by its report
+	@"$(SDK)bin/monkeydo" bin/$(APP)Test.prg $(DEVICE) -t $(TEST) | tee bin/test.log; grep -q "^PASSED" bin/test.log
 
 # Copy onto a USB-connected watch over MTP (brew install libmtp)
 install: build
@@ -34,7 +41,7 @@ frames:
 preview:
 	tools/preview_gifs.sh
 
-# Re-encode rendered frames into the watch resources and source/Dogs.mc
+# Encode the skeleton renders (make rig) into the watch resources and source/Dogs.mc
 art:
 	tools/build_art.sh
 

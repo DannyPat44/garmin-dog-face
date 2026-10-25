@@ -8,7 +8,7 @@ import Toybox.Time;
 import Toybox.Time.Gregorian;
 import Toybox.WatchUi;
 
-// Keeps the dog animation looping while the watch is awake.
+// Moves on to the next clip when one finishes.
 class DogAnimationDelegate extends WatchUi.AnimationDelegate {
 
     private var _view as DogFaceView;
@@ -20,21 +20,22 @@ class DogAnimationDelegate extends WatchUi.AnimationDelegate {
 
     function onAnimationEvent(event as AnimationEvent, options as Dictionary) as Void {
         if (event == WatchUi.ANIMATION_EVENT_COMPLETE) {
-            _view.onLoopComplete();
+            _view.onClipComplete();
         }
     }
 }
 
 // Watch face with animated 3D dogs (Millie, Nova and Ozzie; the list is
-// generated into Dogs.mc) taking turns: a different dog, picked at random,
-// each hour. Her mood follows the
-// day: sleepy overnight, happy once the step goal is met, awake otherwise.
-// Dogs only swap while the screen is off, so nobody sees the change.
-// The animation loops while the screen is awake (the system stops it when
-// the watch goes to sleep); in between, the first frame is drawn as a still
-// so the face never looks empty. The clock and stats are drawn on a layer
-// above the animation, like the SDK's AnimationWatchFace sample, so the
-// system never shows the dog layer on its own while the face redraws.
+// generated into Dogs.mc) taking turns: each hour the dog on screen walks
+// out and a different one, picked at random, walks in and sits (see Story).
+// Her mood follows the day: happy once the step goal is met, awake
+// otherwise, and at bedtime she lies down and sleeps the night.
+// Clips play while the screen is awake (the system stops them when the
+// watch goes to sleep, and the story skips to its end); under each clip is
+// a still of its last frame, so the face never looks empty between clips or
+// while asleep. The clock and stats are drawn on a layer above the
+// animation, like the SDK's AnimationWatchFace sample, so the system never
+// shows the dog layer on its own while the face redraws.
 class DogFaceView extends WatchUi.WatchFace {
 
     private const SLEEP_START_HOUR = 22;
@@ -43,13 +44,12 @@ class DogFaceView extends WatchUi.WatchFace {
     private const CLOCK_TOP = 0.125;
     private const CLOCK_GAP = 6;
 
-    private var _mood as Symbol?;
-    private var _dog as Number = 0;
-    private var _dogHour as Number = -1;
-    // [dog][mood] with moods in the order awake, happy, sleepy
+    private var _story as Story?;
+    // [dog][mood] stills and [dog][clip] animations, in Story's order
     private var _stills as Array<Array<ResourceId> >;
-    private var _animations as Array<Array<ResourceId> >;
+    private var _clips as Array<Array<ResourceId> >;
     private var _still as BitmapResource?;
+    private var _stillId as ResourceId?;
     private var _animation as AnimationLayer?;
     private var _face as Layer?;
     private var _dogX as Number = 0;
@@ -66,8 +66,7 @@ class DogFaceView extends WatchUi.WatchFace {
         _burnInProtection = (settings has :requiresBurnInProtection) && settings.requiresBurnInProtection;
         Math.srand(Time.now().value() + System.getTimer());
         _stills = dogStills();
-        _animations = dogAnimations();
-        _dog = Math.rand() % _stills.size();
+        _clips = dogClips();
     }
 
     function onLayout(dc as Dc) as Void {
@@ -80,13 +79,13 @@ class DogFaceView extends WatchUi.WatchFace {
         var face = new WatchUi.Layer({:locX => 0, :locY => 0, :width => dc.getWidth(), :height => dc.getHeight()});
         addLayer(face);
         _face = face;
-        _dogHour = System.getClockTime().hour;
-        setMood(currentMood(System.getClockTime(), ActivityMonitor.getInfo()));
+        var clock = System.getClockTime();
+        _story = new Story(Math.rand() % _stills.size(), currentMood(clock, ActivityMonitor.getInfo()), clock.hour);
     }
 
     // Playback starts from onUpdate, once the face layer is current
     function onShow() as Void {
-        nextDogIfDue();
+        updateStory();
         WatchUi.requestUpdate();
     }
 
@@ -113,19 +112,14 @@ class DogFaceView extends WatchUi.WatchFace {
         }
 
         var activity = ActivityMonitor.getInfo();
-        var mood = currentMood(clock, activity);
-        if (mood != _mood) {
-            setMood(mood);
+        if (!_playing) {
+            playNext();
         }
-
         var still = _still;
         if (still != null) {
             dc.drawBitmap(_dogX, _dogY, still);
         }
         drawFace(faceDc, clock, activity);
-        if (!_playing) {
-            playLoop();
-        }
     }
 
     private function drawFace(dc as Dc, clock as System.ClockTime, activity as ActivityMonitor.Info) as Void {
@@ -169,30 +163,81 @@ class DogFaceView extends WatchUi.WatchFace {
         stopPlaying();
     }
 
+    // The screen went off: skip the rest of the story and show how it ends
     function onEnterSleep() as Void {
         _lowPower = true;
         stopPlaying();
+        var story = _story;
+        if (story != null) {
+            story.skip();
+            showStill(_stills[story.dog()][story.mood()]);
+        }
         WatchUi.requestUpdate();
     }
 
     function onExitSleep() as Void {
         _lowPower = false;
-        nextDogIfDue();
+        updateStory();
         WatchUi.requestUpdate();
     }
 
-    function onLoopComplete() as Void {
+    function onClipComplete() as Void {
         if (_playing && !_lowPower) {
-            playLoop();
+            playNext();
         }
     }
 
-    private function playLoop() as Void {
-        var animation = _animation;
-        if (animation != null) {
-            _playing = true;
-            animation.setVisible(true);
-            animation.play({:delegate => new DogAnimationDelegate(self)});
+    // While the dog isn't moving on screen (waking up, or coming back to the
+    // face), catch the story up with the time and her mood
+    private function updateStory() as Void {
+        var story = _story;
+        if (story == null) {
+            return;
+        }
+        var count = _stills.size();
+        var next = count > 1 ? (story.dog() + 1 + Math.rand() % (count - 1)) % count : story.dog();
+        var clock = System.getClockTime();
+        story.update(clock.hour, currentMood(clock, ActivityMonitor.getInfo()), next);
+        if (story.isTelling()) {
+            // Start the story now rather than finishing the current loop
+            stopPlaying();
+        }
+    }
+
+    // Play the story's next clip, with the still of its last frame underneath,
+    // keeping only one animation and one still loaded
+    private function playNext() as Void {
+        var story = _story;
+        if (story == null) {
+            return;
+        }
+        var next = story.next();
+        var clip = next[1];
+        var mood = Story.endStill(clip);
+        showStill(mood != null ? _stills[next[0]][mood] : null);
+
+        var old = _animation;
+        if (old != null) {
+            old.stop();
+            removeLayer(old);
+            _animation = null;
+        }
+        var animation = new WatchUi.AnimationLayer(_clips[next[0]][clip], null);
+        animation.setLocation(_dogX, _dogY);
+        insertLayer(animation, 0);
+        _animation = animation;
+        _playing = true;
+        animation.play({:delegate => new DogAnimationDelegate(self)});
+    }
+
+    private function showStill(id as ResourceId?) as Void {
+        if (id == _stillId) {
+            return;
+        }
+        _stillId = id;
+        _still = null;
+        if (id != null) {
+            _still = WatchUi.loadResource(id) as BitmapResource;
         }
     }
 
@@ -206,44 +251,6 @@ class DogFaceView extends WatchUi.WatchFace {
         }
     }
 
-    // Called only while the dog isn't on screen (waking up or coming back to
-    // the face): once the hour has turned, one of the other two dogs takes over.
-    private function nextDogIfDue() as Void {
-        var hour = System.getClockTime().hour;
-        if (hour == _dogHour || _mood == null) {
-            return;
-        }
-        _dogHour = hour;
-        var count = _stills.size();
-        if (count > 1) {
-            _dog = (_dog + 1 + Math.rand() % (count - 1)) % count;
-        }
-        setMood(currentMood(System.getClockTime(), ActivityMonitor.getInfo()));
-    }
-
-    // Swap in the current dog's still and animation for a mood, keeping only
-    // one of each loaded.
-    private function setMood(mood as Symbol) as Void {
-        _mood = mood;
-        var index = mood == :happy ? 1 : (mood == :sleepy ? 2 : 0);
-        var stillId = _stills[_dog][index];
-        var animationId = _animations[_dog][index];
-        _still = null;
-        _still = WatchUi.loadResource(stillId) as BitmapResource;
-
-        var old = _animation;
-        if (old != null) {
-            old.stop();
-            removeLayer(old);
-        }
-        _playing = false;
-        var animation = new WatchUi.AnimationLayer(animationId, null);
-        animation.setLocation(_dogX, _dogY);
-        animation.setVisible(false);
-        insertLayer(animation, 0);
-        _animation = animation;
-    }
-
     // AMOLED always-on mode: only the time, dimmed, and nudged each minute
     // so the lit pixels stay under the burn-in limit and don't sit still.
     private function drawAlwaysOn(dc as Dc, clock as System.ClockTime) as Void {
@@ -253,16 +260,16 @@ class DogFaceView extends WatchUi.WatchFace {
             formatTime(clock), Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
     }
 
-    private function currentMood(clock as System.ClockTime, activity as ActivityMonitor.Info) as Symbol {
+    private function currentMood(clock as System.ClockTime, activity as ActivityMonitor.Info) as Number {
         if (clock.hour >= SLEEP_START_HOUR || clock.hour < SLEEP_END_HOUR) {
-            return :sleepy;
+            return Story.SLEEPY;
         }
         var steps = activity.steps;
         var goal = activity.stepGoal;
         if (steps != null && goal != null && goal > 0 && steps >= goal) {
-            return :happy;
+            return Story.HAPPY;
         }
-        return :awake;
+        return Story.AWAKE;
     }
 
     private function formatTime(clock as System.ClockTime) as String {

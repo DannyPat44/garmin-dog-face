@@ -1,6 +1,6 @@
 <drawables>
     <bitmap id="LauncherIcon" filename="launcher_icon.png" />
-    <!-- First frame of each animation, drawn while the animation is idle -->
+    <!-- First frame of each mood loop, drawn under the clips -->
     <bitmap id="MillieAwake" filename="millie_awake.png" />
     <bitmap id="MillieHappy" filename="millie_happy.png" />
     <bitmap id="MillieSleepy" filename="millie_sleepy.png" />

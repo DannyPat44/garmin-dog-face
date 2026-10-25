@@ -11,10 +11,11 @@ function dogStills() as Array<Array<ResourceId> > {
     ];
 }
 
-function dogAnimations() as Array<Array<ResourceId> > {
+// [dog][clip], clips in the order awake happy sleepy walkin walkout liedown getup (Story's constants)
+function dogClips() as Array<Array<ResourceId> > {
     return [
-        [ Rez.Drawables.MillieAwakeAnimation, Rez.Drawables.MillieHappyAnimation, Rez.Drawables.MillieSleepyAnimation, ],
-        [ Rez.Drawables.NovaAwakeAnimation, Rez.Drawables.NovaHappyAnimation, Rez.Drawables.NovaSleepyAnimation, ],
-        [ Rez.Drawables.OzzieAwakeAnimation, Rez.Drawables.OzzieHappyAnimation, Rez.Drawables.OzzieSleepyAnimation, ],
+        [ Rez.Drawables.MillieAwakeAnimation, Rez.Drawables.MillieHappyAnimation, Rez.Drawables.MillieSleepyAnimation, Rez.Drawables.MillieWalkinAnimation, Rez.Drawables.MillieWalkoutAnimation, Rez.Drawables.MillieLiedownAnimation, Rez.Drawables.MillieGetupAnimation, ],
+        [ Rez.Drawables.NovaAwakeAnimation, Rez.Drawables.NovaHappyAnimation, Rez.Drawables.NovaSleepyAnimation, Rez.Drawables.NovaWalkinAnimation, Rez.Drawables.NovaWalkoutAnimation, Rez.Drawables.NovaLiedownAnimation, Rez.Drawables.NovaGetupAnimation, ],
+        [ Rez.Drawables.OzzieAwakeAnimation, Rez.Drawables.OzzieHappyAnimation, Rez.Drawables.OzzieSleepyAnimation, Rez.Drawables.OzzieWalkinAnimation, Rez.Drawables.OzzieWalkoutAnimation, Rez.Drawables.OzzieLiedownAnimation, Rez.Drawables.OzzieGetupAnimation, ],
     ];
 }
