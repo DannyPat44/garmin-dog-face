@@ -7,7 +7,7 @@ DEVICE ?= fr265
 KEY ?= $(HOME)/workspace/garmin/keys/developer_key.der
 APP := DogFace
 
-.PHONY: build run package art
+.PHONY: build run install package art
 
 build:
 	"$(SDK)bin/monkeyc" -f monkey.jungle -d $(DEVICE) -y "$(KEY)" -o bin/$(APP).prg -w
@@ -15,6 +15,12 @@ build:
 run: build
 	@pgrep -qf ConnectIQ.app || { "$(SDK)bin/connectiq"; until pgrep -qf ConnectIQ.app; do sleep 1; done; sleep 2; }
 	"$(SDK)bin/monkeydo" bin/$(APP).prg $(DEVICE)
+
+# Copy onto a USB-connected watch over MTP (brew install libmtp)
+install: build
+	@apps=$$(mtp-folders 2>/dev/null | awk '$$2 == "GARMIN" {g=1} g && $$2 == "Apps" {print $$1; exit}'); \
+	test -n "$$apps" || { echo "Watch not found: plug it in and close Garmin Express/OpenMTP"; exit 1; }; \
+	mtp-sendfile bin/$(APP).prg $$apps > /dev/null && echo "Installed $(APP).prg; unplug the watch"
 
 package:
 	"$(SDK)bin/monkeyc" -f monkey.jungle -e -r -y "$(KEY)" -o bin/$(APP).iq
