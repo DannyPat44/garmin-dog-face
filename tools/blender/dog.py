@@ -4,7 +4,7 @@
            chest and paws, tan eyebrow dots, floppy ears
     nova   golden long-haired dachshund with silky feathered ears and tail
     ozzie  red cattle dog mix: ginger with white markings, one pricked ear and
-           one folded, bushy banded tail, black collar
+           one folded, bushy banded tail
 
 The body and head are sculpted from metaballs (smoothly blended shapes) and
 converted to meshes, then covered in soft particle fur shaded with the
@@ -540,7 +540,7 @@ def build_nova(pose):
 def build_ozzie(pose):
     """Ozzie: a red Australian cattle dog mix. Lean and leggy, ginger with a
     darker saddle, white blaze, muzzle, chest and legs, one pricked ear and one
-    folded, a bushy banded tail with a white tip, and a black collar."""
+    folded, and a bushy banded tail with a white tip."""
     require_sitting("ozzie", pose)
     root = empty("root", (0, 0, 0))
     rig = {"root": root}
@@ -568,7 +568,6 @@ def build_ozzie(pose):
         ]
     rig["torso"] = sculpt("body", body, coat_materials("body", RED, body_patches), root,
                           fur=(0.03, 7000, 0.5))
-    collar((0, -0.04, 0.62), 0.18, 20, root)
 
     # Bushy tail curling up, with a dark band and a white tip
     tail_root = empty("tail_root", (0.12, 0.24, 0.10), root)
@@ -680,17 +679,6 @@ def folded_ear(side, pivot_loc, head_pivot):
            ((px + side * 0.08, py - 0.11, pz - 0.03), (0.05, 0.025, 0.05), (-70, 0, 0))]
     sculpt(f"ear{side}", ear, coat_materials(f"ear{side}", EAR_DARK), pivot, fur=(0.015, 12000, 0.4))
     return pivot
-
-
-def collar(loc, radius, tilt, parent):
-    bpy.ops.mesh.primitive_torus_add(major_radius=radius, minor_radius=0.028, location=loc,
-                                     rotation=(math.radians(tilt), 0, 0), major_segments=64, minor_segments=16)
-    obj = bpy.context.active_object
-    obj.name = "collar"
-    bpy.ops.object.shade_smooth()
-    obj.data.materials.append(glossy_material("collar", NOSE, 0.45, 0.2))
-    set_parent(obj, parent)
-    return obj
 
 
 def lathe(name, profile, segments=64):
