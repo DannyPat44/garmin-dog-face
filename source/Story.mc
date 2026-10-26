@@ -25,8 +25,6 @@ class Story {
     private var _slot as Number;
     // [dog, clip] pairs still to play before the mood loop
     private var _queue as Array<[Number, Number]> = [] as Array<[Number, Number]>;
-    // The clip last handed out by next(), which may still be playing
-    private var _current as [Number, Number]? = null;
 
     //! A fresh face: the dog walks in, and lies down if it's bedtime
     public function initialize(dog as Number, mood as Number, slot as Number) {
@@ -84,27 +82,27 @@ class Story {
 
     //! The next clip to play as [dog, clip]: the queue, then the mood loop
     public function next() as [Number, Number] {
-        var clip = [_dog, _mood] as [Number, Number];
         if (_queue.size() > 0) {
-            clip = _queue[0];
+            var clip = _queue[0];
             _queue = _queue.slice(1, null);
+            return clip;
         }
-        _current = clip;
-        return clip;
+        return [_dog, _mood];
     }
 
-    //! The screen went off mid-story: skip to how it ends, except that the
-    //! new dog's walk-in (the part worth seeing) waits for the next look,
-    //! from the start if it was cut off, followed by lying down at bedtime
+    //! The screen went off mid-story: skip to how it ends, except that a
+    //! walk-in that hadn't started yet (the screen went off during the walk
+    //! out) waits for the next look, followed by lying down at bedtime. A
+    //! walk-in cut off partway isn't replayed: the screen can go off before a
+    //! walk-in ends every time, and she'd walk in forever.
     public function skip() as Void {
-        var walkIn = _current != null && _current[0] == _dog && _current[1] == WALK_IN;
+        var walkIn = false;
         for (var i = 0; i < _queue.size(); i++) {
             if (_queue[i][0] == _dog && _queue[i][1] == WALK_IN) {
                 walkIn = true;
             }
         }
         _queue = [] as Array<[Number, Number]>;
-        _current = null;
         if (walkIn) {
             _queue.add([_dog, WALK_IN]);
             if (_mood == SLEEPY) {

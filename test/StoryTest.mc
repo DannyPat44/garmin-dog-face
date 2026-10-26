@@ -93,24 +93,26 @@ function storySkipsTheWalkOutButKeepsTheWalkInWhenTheScreenGoesOff(logger as Log
 }
 
 (:test)
-function storyReplaysAWalkInCutOff(logger as Logger) as Boolean {
+function storyDoesNotReplayAWalkInCutOff(logger as Logger) as Boolean {
+    // The screen can go off before every walk-in ends; she mustn't walk in forever
     var story = new Story(2, Story.AWAKE, 9);
     story.next();
     story.skip();
-    Test.assert(sameClips(storyClips(story), [[2, Story.WALK_IN]]));
-    // Once she's sitting, the screen going off leaves nothing to replay
-    story.next();
-    story.skip();
     Test.assert(!story.isTelling());
+    Test.assert(sameClips([story.next()], [[2, Story.AWAKE]]));
     return true;
 }
 
 (:test)
-function storyReplaysTheWalkInAndLieDownAtBedtime(logger as Logger) as Boolean {
-    var story = new Story(1, Story.SLEEPY, 23);
-    story.next();
-    story.skip();
-    Test.assert(sameClips(storyClips(story), [[1, Story.WALK_IN], [1, Story.LIE_DOWN]]));
+function storyKeepsTheWalkInAndLieDownAtBedtime(logger as Logger) as Boolean {
+    // A swap just before bedtime, with the screen going off during the walk-out
+    var awake = new Story(0, Story.AWAKE, 20);
+    storyClips(awake);
+    awake.update(21, Story.AWAKE, 1);
+    awake.next();
+    awake.update(21, Story.SLEEPY, 1);
+    awake.skip();
+    Test.assert(sameClips(storyClips(awake), [[1, Story.WALK_IN], [1, Story.LIE_DOWN]]));
     return true;
 }
 
