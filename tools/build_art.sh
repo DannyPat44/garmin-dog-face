@@ -23,8 +23,11 @@ export PATH="$JAVA_HOME/bin:$PATH"
 # Crop to the dog (and its Zzz) before scaling to the watch size; in 400px
 # frame units, scaled to whatever size was rendered
 CROP="292*iw/400:328*ih/400:76*iw/400:62*ih/400"
-# The screen size and the device whose display each size is encoded for
-SCREENS=${SCREENS:-"416:fr265 260:fr255"}
+# Each screen size and the devices with that screen; the art is encoded for
+# the first one's display, and the others (the same screen, e.g. the FR255
+# Music) are mapped to the same encoding
+SCREENS=${SCREENS:-"416:fr265 260:fr255,fr255m"}
+DEVICES="$HOME/Library/Application Support/Garmin/ConnectIQ/Devices"
 FPS=10
 DOGS=${DOGS:-"millie nova ozzie"}
 FRAMES=${FRAMES:-build/frames/rig}
@@ -32,12 +35,18 @@ CLIPS="awake happy sleepy walkin walkout liedown getup"
 MOODS="awake happy sleepy"
 
 capitalise() { echo "$1" | awk '{print toupper(substr($0,1,1)) substr($0,2)}'; }
+# part_numbers <device>: the device's part numbers, which Monkey Motion maps to encodings
+part_numbers() {
+    python3 -c "import json, sys; print(' '.join(p['number'] for p in json.load(open(sys.argv[1]))['partNumbers']))" \
+        "$DEVICES/$1/compiler.json"
+}
 # scaled <px> <screen>: a size on the 416px screen, scaled to <screen> (as DogLayout does)
 scaled() { awk "BEGIN { printf \"%d\", $1 * $2 / 416 + 0.5 }"; }
 
 for spec in $SCREENS; do
     screen=${spec%%:*}
-    device=${spec#*:}
+    devices=$(echo "${spec#*:}" | tr , ' ')
+    device=${devices%% *}
     out="resources-round-${screen}x$screen"
     width=$(scaled 222 "$screen")
     height=$(scaled 249 "$screen")
@@ -91,8 +100,16 @@ for spec in $SCREENS; do
                 "$gif"
             bash "${SDK}bin/monkeym" -v "$gif" -d "$device" -r "$res" -f $FPS \
                 -o "$out/animations/$name" > "build/art/$screen/monkeym_$name.log"
+            mmm="$out/animations/$name/$name.mmm"
             # monkeym records the absolute source path; keep the repo free of local paths
-            sed -i '' "s|# Video file: .*/build/|# Video file: build/|" "$out/animations/$name/$name.mmm"
+            sed -i '' "s|# Video file: .*/build/|# Video file: build/|" "$mmm"
+            # The other devices with this screen use the same encoding
+            encoding=$(grep -m1 "^[0-9]" "$mmm" | cut -d= -f2)
+            for other in ${devices#"$device"}; do
+                for part in $(part_numbers "$other"); do
+                    echo "$part=$encoding" >> "$mmm"
+                done
+            done
             animations_xml="$animations_xml
     <animation id=\"${id}Animation\" filename=\"$name/$name.mmm\" />"
             echo "built $name at ${screen}px"
