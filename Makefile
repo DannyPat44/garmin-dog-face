@@ -7,7 +7,7 @@ DEVICE ?= fr265
 KEY ?= $(HOME)/workspace/garmin/keys/developer_key.der
 APP := Doggos
 
-.PHONY: build run test install package art frames preview rig rig-preview
+.PHONY: build run test install package art frames preview rig rig-preview media
 
 build:
 	"$(SDK)bin/monkeyc" -f monkey.jungle -d $(DEVICE) -y "$(KEY)" -o bin/$(APP).prg -w
@@ -52,3 +52,7 @@ rig:
 # Watch-size GIFs of the skeleton renders, including a walk-in/sit/walk-out story
 rig-preview:
 	tools/preview_rig.sh
+
+# The README's GIFs and videos and the store screenshots, from the skeleton renders
+media:
+	tools/make_media.sh

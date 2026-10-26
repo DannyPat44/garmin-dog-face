@@ -1,48 +1,78 @@
 # Doggos
 
-A Connect IQ watch face for the Garmin Forerunner 265 and 255 where three fluffy,
-animated 3D dogs take turns on your wrist. Every dog is modelled in code and
-rendered with Blender, so you can make your own.
+A Connect IQ watch face for the Garmin Forerunner 265, 255 and 255 Music where
+three fluffy, animated 3D dogs take turns on your wrist. Every dog is modelled
+in code and rendered with Blender, so you can make your own.
 
-| Millie | Nova | Ozzie | Nova, asleep |
-|---|---|---|---|
-| ![Millie](store/screenshot_millie.png) | ![Nova](store/screenshot_nova.png) | ![Ozzie](store/screenshot_ozzie.png) | ![Nova asleep](store/screenshot_nova_sleepy.png) |
+| Millie | Nova | Ozzie |
+|:---:|:---:|:---:|
+| ![Millie walks in, sits and walks off](docs/media/millie_hour.gif) | ![Nova walks in, sits and walks off](docs/media/nova_hour.gif) | ![Ozzie walks in with her ball, sits and walks off](docs/media/ozzie_hour.gif) |
+| [video](docs/media/millie_hour.mp4) | [video](docs/media/nova_hour.mp4) | [video](docs/media/ozzie_hour.mp4) |
 
 - **Millie**: a tri-colour hound pup in a little captain's hat.
 - **Nova**: a golden long-haired dachshund in a straw sombrero with a rainbow band.
 - **Ozzie**: a red cattle dog mix with one pricked ear and her tennis ball.
 
-Each hour the dogs take turns. The first time you look after the hour, the
-dog on screen gets up and walks off (Ozzie picks up her ball first), and the
-next dog, picked at random, walks in and sits down (Ozzie drops her ball,
-which bounces and rolls away). She stays for the rest of the hour in a mood:
+## What they do
 
-| Mood   | When                 | Animation                                        |
-|--------|----------------------|--------------------------------------------------|
-| sleepy | 10pm to 6am          | lying down, deep breaths, ear twitches, Zzz      |
-| happy  | step goal reached    | tongue out, bouncing, fast tail wag              |
-| awake  | the rest of the time | head tilt, blink, tail wag                       |
+When it's time to swap (every hour, or as often as you like), the dog on
+screen gets up and walks off, and the next dog, picked at random, walks in
+from the edge of the screen and sits down. Ozzie picks up her ball before she
+leaves and drops it when she arrives; it bounces and rolls to her paws. They
+turn the way a dog does: curving round as they walk, head first, feet
+stepping through the turn. The walks fill the whole round screen, passing
+under the steps and heart rate. Between swaps she sits in a mood:
+
+| | Awake | Happy | Asleep |
+|---|:---:|:---:|:---:|
+| **Millie** | ![Millie awake](store/screenshot_millie.png) | ![Millie happy](store/screenshot_millie_happy.png) | ![Millie asleep](store/screenshot_millie_sleepy.png) |
+| **Nova** | ![Nova awake](store/screenshot_nova.png) | ![Nova happy](store/screenshot_nova_happy.png) | ![Nova asleep](store/screenshot_nova_sleepy.png) |
+| **Ozzie** | ![Ozzie awake](store/screenshot_ozzie.png) | ![Ozzie happy](store/screenshot_ozzie_happy.png) | ![Ozzie asleep](store/screenshot_ozzie_sleepy.png) |
+| **When** | the rest of the time | step goal reached | 10pm to 6am |
+| **Moves** | head tilt, blink, tail wag | tongue out, bouncing, fast tail wag | deep breaths, ear twitches, Zzz |
 
 At bedtime the dog on screen lies down with a yawn and stays the night; in the
-morning she gets up and hands over to the next dog. Walk-ins and walk-outs fill
-the whole round screen, so the dogs trot in from off the edge and pass under
-the steps and heart rate.
+morning she gets up and hands over to the next dog.
 
-To change the face, hold Up, pick Watch Face, then Customize:
+| Bedtime | Step goal met |
+|:---:|:---:|
+| ![Millie lies down for the night](docs/media/bedtime.gif) | ![Ozzie happy, tongue out](docs/media/happy.gif) |
+| [video](docs/media/bedtime.mp4) | [video](docs/media/happy.mp4) |
+
+The battery (with percentage) and date sit at the top, then a chunky Fredoka
+clock, steps on the left and heart rate on the right. The clock and stats are
+drawn on a layer above the dog, so the dog never shows without the rest of the
+face. The animations play while the screen is fully on. If the screen goes off
+during the old dog's walk-out, the new dog walks in the next time you look;
+otherwise the face skips to how the story ends and shows its last frame as a
+still. In always-on mode the AMOLED screen shows only a dim, shifting clock to
+stay within Garmin's burn-in rules.
+
+## Settings
+
+On the watch, hold Up, pick Watch Face, then Customize on Doggos:
 - **Swap dogs** sets how often they take turns: every look, every 5, 15 or
-  30 minutes, or every hour (the default).
-- Each dog has a switch. A dog switched off while she's on screen walks off
-  next time you look (or in the morning, if she's asleep); with every dog
-  off, they all take turns.
+  30 minutes, or every hour (the default). "Every look" gives you a walk-in
+  each time you raise your wrist.
+- **Millie, Nova, Ozzie**: a switch for each dog. A dog switched off while
+  she's on screen walks off next time you look (or in the morning, if she's
+  asleep); with every dog off, they all take turns.
 
-If the screen goes off before the new dog has finished walking in, she walks
-in the next time you look, rather than appearing already sitting. The animations play while
-the screen is fully on; if the screen goes off partway, the face skips to how
-the story ends, and the last frame shows as a still. The battery (with percentage) and date sit at the top, then
-a chunky Fredoka clock, steps on the left and heart rate on the right. The
-clock and stats are drawn on a layer above the dog, so the dog never shows
-without the rest of the face. In always-on mode the AMOLED screen shows only a
-dim, shifting clock to stay within Garmin's burn-in rules.
+The settings live on the watch; the Garmin Connect app can't change them for
+a face installed outside the Connect IQ Store.
+
+## Install
+
+Doggos isn't in the Connect IQ Store yet, so it's installed by copying the
+build for your watch (`make build DEVICE=fr265`, `fr255` or `fr255m`, or a file
+someone shares with you) into `GARMIN/Apps` on the watch over USB:
+- **Windows**: the watch shows up in File Explorer; open Internal Storage,
+  GARMIN, Apps and copy the `.prg` in.
+- **Mac**: Finder doesn't show Garmin watches, so use
+  [OpenMTP](https://openmtp.ganeshrvel.com) (quit Garmin Express first), or
+  `make install` with libmtp.
+
+Unplug the watch, then hold Up, pick Watch Face, and apply Doggos.
 
 ## Setup
 
@@ -55,7 +85,7 @@ brew install ffmpeg libmtp openjdk@17
 
 - **Connect IQ SDK**: install the SDK Manager from
   https://developer.garmin.com/connect-iq/sdk/, then download the latest SDK
-  and the Forerunner 265 device files (needs a Garmin login).
+  and the Forerunner 265, 255 and 255 Music device files (needs a Garmin login).
 - **Java 17**: `export JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home`
   in your shell profile.
 - **Developer key**: every Connect IQ app is signed. Make one once and keep it
@@ -77,11 +107,12 @@ brew install ffmpeg libmtp openjdk@17
 | `make run` | Build and open in the simulator (`DEVICE=fr255` for the Forerunner 255; the default is `fr265`) |
 | `make install` | Build and copy onto a USB-connected watch (close Garmin Express first) |
 | `make package` | Build `bin/Doggos.iq` for the Connect IQ Store |
-| `make frames`, `make preview` | The original single-pose renders (`dog.py`, used for the store art) and their review GIFs |
+| `make frames`, `make preview` | The original single-pose renders (`dog.py`) and their review GIFs |
 | `make test` | Unit tests (`test/`) in the simulator |
 | `make rig` | Render dogs on the shared skeleton into `build/frames/rig/` (`DOGS="ozzie nova millie"`, `ANIMS=walkin` narrows it; `SIZE=300` renders at the watch's size, ~15 s a frame with fur) |
 | `make art` | Encode the skeleton renders into the watch resources, at each screen size, and `source/Dogs.mc` |
 | `make rig-preview` | Watch-size GIFs of the skeleton renders, plus a "story" GIF: walk in, sit, walk out |
+| `make media` | The README's GIFs and videos (`docs/media/`) and the store screenshots, hero and cover, laid out on the watch face |
 
 Quick single-frame preview while you tweak a dog (`--no-fur` takes seconds):
 
@@ -101,7 +132,7 @@ everything is built in code in `tools/blender/dog.py`:
 2. Markings are procedural: coloured ellipsoid patches with noisy edges, so
    the same coat paints the skin and the fur.
 3. Props are built in code too: Nova's straw sombrero, Ozzie's tennis ball and
-   Millie's collar lettering (Fredoka, from `tools/fonts/`).
+   Millie's captain's hat.
 4. The dogs are posed and animated on a shared skeleton (see below) and
    rendered with Cycles on a transparent background at 10 fps.
 5. `tools/build_art.sh` flattens the frames onto black and fits them to the
@@ -150,8 +181,9 @@ Nova's spec is "short legs, long body, gold coat, silky fur, sombrero head".
   pivoting at the shoulders, chest, neck, two-joint legs with paws, a four-bone
   tail) with Blender's automatic weights; the head hangs off the neck bone.
   Every move is a real bend at the joints, and the fur rides along.
-- **Poses** are bone angles shared by every dog: standing, sitting, lying (a
-  sphinx: front legs out, hind legs tucked). How far a dog drops lying scales
+- **Poses** are bone angles shared by every dog: standing, sitting (facing
+  you, looking out of the watch) and lying (turned side-on so her length
+  shows, chin low, face turned to you with a tilt, hind legs folded close). How far a dog drops lying scales
   with its leg height, and how far the spine tilts sitting with its body length
   (so a long, low dachshund sits on her rump instead of through the floor); a
   spec can adjust any pose.
@@ -201,4 +233,6 @@ without a jump. `make rig-preview` makes review GIFs of everything.
 - `tools/build_art.sh`: encodes the skeleton renders for the watch
 - `tools/render_frames.sh`, `tools/preview_gifs.sh`: the original single-pose renders
 - `tools/make_font.py`: turns `tools/fonts/Fredoka.ttf` (SIL OFL) into the clock's bitmap font
-- `store/`: Connect IQ Store listing and screenshots
+- `tools/make_media.sh`, `tools/face_ui.py`: the README's GIFs and videos and the store art
+- `docs/media/`: the README's GIFs and videos
+- `store/`: Connect IQ Store listing, screenshots, hero and cover
