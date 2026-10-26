@@ -28,10 +28,15 @@ morning she gets up and hands over to the next dog. Walk-ins and walk-outs fill
 the whole round screen, so the dogs trot in from off the edge and pass under
 the steps and heart rate.
 
-To choose which dogs take turns, hold Up, pick Watch Face, then Customize:
-each dog has a switch. A dog switched off while she's on screen walks off
-next time you look (or in the morning, if she's asleep); with every dog off,
-they all take turns. The animations play while
+To change the face, hold Up, pick Watch Face, then Customize:
+- **Swap dogs** sets how often they take turns: every look, every 5, 15 or
+  30 minutes, or every hour (the default).
+- Each dog has a switch. A dog switched off while she's on screen walks off
+  next time you look (or in the morning, if she's asleep); with every dog
+  off, they all take turns.
+
+If the screen goes off before the new dog has finished walking in, she walks
+in the next time you look, rather than appearing already sitting. The animations play while
 the screen is fully on; if the screen goes off partway, the face skips to how
 the story ends, and the last frame shows as a still. The battery (with percentage) and date sit at the top, then
 a chunky Fredoka clock, steps on the left and heart rate on the right. The

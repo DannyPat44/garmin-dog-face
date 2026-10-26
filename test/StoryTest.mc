@@ -80,14 +80,63 @@ function storyStaysTheNight(logger as Logger) as Boolean {
 }
 
 (:test)
-function storySkipsToTheEndWhenTheScreenGoesOff(logger as Logger) as Boolean {
+function storySkipsTheWalkOutButKeepsTheWalkInWhenTheScreenGoesOff(logger as Logger) as Boolean {
     var story = new Story(0, Story.AWAKE, 9);
     storyClips(story);
     story.update(10, Story.HAPPY, 1);
     story.next();
     story.skip();
-    Test.assert(!story.isTelling());
+    // Next time you look, the new dog walks in
+    Test.assert(sameClips(storyClips(story), [[1, Story.WALK_IN]]));
     Test.assert(sameClips([story.next()], [[1, Story.HAPPY]]));
+    return true;
+}
+
+(:test)
+function storyReplaysAWalkInCutOff(logger as Logger) as Boolean {
+    var story = new Story(2, Story.AWAKE, 9);
+    story.next();
+    story.skip();
+    Test.assert(sameClips(storyClips(story), [[2, Story.WALK_IN]]));
+    // Once she's sitting, the screen going off leaves nothing to replay
+    story.next();
+    story.skip();
+    Test.assert(!story.isTelling());
+    return true;
+}
+
+(:test)
+function storyReplaysTheWalkInAndLieDownAtBedtime(logger as Logger) as Boolean {
+    var story = new Story(1, Story.SLEEPY, 23);
+    story.next();
+    story.skip();
+    Test.assert(sameClips(storyClips(story), [[1, Story.WALK_IN], [1, Story.LIE_DOWN]]));
+    return true;
+}
+
+(:test)
+function storySwapsADogNeverSeenWithoutAWalkOut(logger as Logger) as Boolean {
+    var story = new Story(0, Story.AWAKE, 9);
+    storyClips(story);
+    story.update(10, Story.AWAKE, 1);
+    story.next();
+    story.skip();
+    // She never got to walk in, so the next dog walks straight in
+    story.update(11, Story.AWAKE, 2);
+    Test.assert(sameClips(storyClips(story), [[2, Story.WALK_IN]]));
+    return true;
+}
+
+(:test)
+function storySlots(logger as Logger) as Boolean {
+    // Every hour: 9:59 and 10:00 are different slots
+    Test.assertEqual(Story.slot(9 * 60 + 59, 60, 0), 9);
+    Test.assertEqual(Story.slot(10 * 60, 60, 0), 10);
+    // Every 15 minutes
+    Test.assertEqual(Story.slot(10 * 60 + 14, 15, 0), 40);
+    Test.assertEqual(Story.slot(10 * 60 + 15, 15, 0), 41);
+    // Every look: the count of looks
+    Test.assertEqual(Story.slot(600, 0, 7), 7);
     return true;
 }
 

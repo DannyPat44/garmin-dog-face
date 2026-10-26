@@ -26,12 +26,14 @@ class DogAnimationDelegate extends WatchUi.AnimationDelegate {
 }
 
 // Watch face with animated 3D dogs (Millie, Nova and Ozzie; the list is
-// generated into Dogs.mc) taking turns: each hour the dog on screen walks
-// out and a different one, picked at random, walks in and sits (see Story).
+// generated into Dogs.mc) taking turns: each hour (or as often as the
+// settings say) the dog on screen walks out and a different one, picked at
+// random, walks in and sits (see Story).
 // Her mood follows the day: happy once the step goal is met, awake
 // otherwise, and at bedtime she lies down and sleeps the night.
 // Clips play while the screen is awake (the system stops them when the
-// watch goes to sleep, and the story skips to its end); under each clip is
+// watch goes to sleep, and the story skips to its end, keeping a walk-in for
+// the next look); under each clip is
 // a still of its last frame, so the face never looks empty between clips or
 // while asleep. The clock and stats are drawn on a layer above the
 // animation, like the SDK's AnimationWatchFace sample, so the system never
@@ -61,6 +63,8 @@ class DogFaceView extends WatchUi.WatchFace {
     private var _lowPower as Boolean = false;
     private var _playing as Boolean = false;
     private var _burnInProtection as Boolean = false;
+    // How many times the screen has woken, for swapping every look
+    private var _looks as Number = 0;
 
     function initialize() {
         WatchFace.initialize();
@@ -84,7 +88,8 @@ class DogFaceView extends WatchUi.WatchFace {
         addLayer(face);
         _face = face;
         var clock = System.getClockTime();
-        _story = new Story(DogPicker.next(shownDogs(), null, Math.rand()), currentMood(clock, ActivityMonitor.getInfo()), clock.hour);
+        _story = new Story(DogPicker.next(shownDogs(), null, Math.rand()), currentMood(clock, ActivityMonitor.getInfo()),
+            slot(clock));
     }
 
     // Playback starts from onUpdate, once the face layer is current
@@ -174,20 +179,22 @@ class DogFaceView extends WatchUi.WatchFace {
         stopPlaying();
     }
 
-    // The screen went off: skip the rest of the story and show how it ends
+    // The screen went off: skip the rest of the story and show how it ends,
+    // or nothing if the new dog is still to walk in next time
     function onEnterSleep() as Void {
         _lowPower = true;
         stopPlaying();
         var story = _story;
         if (story != null) {
             story.skip();
-            showStill(_stills[story.dog()][story.mood()]);
+            showStill(story.isTelling() ? null : _stills[story.dog()][story.mood()]);
         }
         WatchUi.requestUpdate();
     }
 
     function onExitSleep() as Void {
         _lowPower = false;
+        _looks++;
         updateStory();
         WatchUi.requestUpdate();
     }
@@ -212,7 +219,7 @@ class DogFaceView extends WatchUi.WatchFace {
             story.swapTo(next);
         }
         var clock = System.getClockTime();
-        story.update(clock.hour, currentMood(clock, ActivityMonitor.getInfo()), next);
+        story.update(slot(clock), currentMood(clock, ActivityMonitor.getInfo()), next);
         if (story.isTelling()) {
             // Start the story now rather than finishing the current loop
             stopPlaying();
@@ -277,6 +284,11 @@ class DogFaceView extends WatchUi.WatchFace {
         dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
         dc.drawText(dc.getWidth() / 2 + offset, dc.getHeight() / 2 + offset, Graphics.FONT_NUMBER_MEDIUM,
             formatTime(clock), Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+    }
+
+    // The time slot the dogs swap in, from the settings
+    private function slot(clock as System.ClockTime) as Number {
+        return Story.slot(clock.hour * 60 + clock.min, swapEvery(), _looks);
     }
 
     private function currentMood(clock as System.ClockTime, activity as ActivityMonitor.Info) as Number {
