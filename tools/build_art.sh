@@ -29,6 +29,15 @@ CROP="292*iw/400:328*ih/400:76*iw/400:62*ih/400"
 SCREENS=${SCREENS:-"416:fr265 260:fr255,fr255m"}
 DEVICES="$HOME/Library/Application Support/Garmin/ConnectIQ/Devices"
 FPS=10
+# The walks trot across the screen a third faster than they're rendered, so a
+# walk-in finishes before the watch ends the face's animations: every third
+# frame of the trot is dropped (before the walk-in's turn, which starts at
+# frame 60, and after the walk-out's, which ends at frame 50). Travel and
+# the leg cycle speed up together, so paws still don't slide; the turns, the
+# ball and sitting down keep their pace. As ffmpeg select expressions on the
+# 0-based frame number n:
+WALKIN_KEEP="gte(n,57)+not(eq(mod(n,3),2))"
+WALKOUT_KEEP="lt(n,51)+not(eq(mod(n-51,3),2))"
 DOGS=${DOGS:-"millie nova ozzie"}
 FRAMES=${FRAMES:-build/frames/rig}
 CLIPS="awake happy sleepy walkin walkout liedown getup"
@@ -80,6 +89,9 @@ for spec in $SCREENS; do
             size=$(ffprobe -v error -select_streams v -show_entries stream=width -of csv=p=0 "$FRAMES/$dog/$src/0001.png")
             # Walks: the whole screen, masked to its circle. The rest: cropped
             # to the box, with its edges faded
+            speed=""
+            [ "$clip" = walkin ] && speed="select='$WALKIN_KEEP',setpts=N/($FPS*TB),"
+            [ "$clip" = walkout ] && speed="select='$WALKOUT_KEEP',setpts=N/($FPS*TB),"
             if [ "$clip" = walkin ] || [ "$clip" = walkout ]; then
                 fit="scale=$screen:$screen:flags=lanczos"
                 mask="build/art/screen_mask_$screen.png"
@@ -96,7 +108,7 @@ for spec in $SCREENS; do
             gif="build/art/$screen/$name.gif"
             ffmpeg -v error -y -framerate $FPS -i "$frames" -f lavfi -i "color=black:s=${size}x$size:r=$FPS" \
                 -loop 1 -i "$mask" -filter_complex \
-                "[1][0]overlay=shortest=1,${reverse}$fit,format=rgb24[d];[2]format=rgb24[m];[d][m]blend=all_mode=multiply:shortest=1,split[a][b];[a]palettegen=stats_mode=single[p];[b][p]paletteuse=new=1:dither=sierra2_4a" \
+                "[1][0]overlay=shortest=1,${speed}${reverse}$fit,format=rgb24[d];[2]format=rgb24[m];[d][m]blend=all_mode=multiply:shortest=1,split[a][b];[a]palettegen=stats_mode=single[p];[b][p]paletteuse=new=1:dither=sierra2_4a" \
                 "$gif"
             bash "${SDK}bin/monkeym" -v "$gif" -d "$device" -r "$res" -f $FPS \
                 -o "$out/animations/$name" > "build/art/$screen/monkeym_$name.log"

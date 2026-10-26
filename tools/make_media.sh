@@ -13,6 +13,9 @@ cd "$(dirname "$0")/.."
 CROP="292*iw/400:328*ih/400:76*iw/400:62*ih/400"
 SCREEN=416
 FPS=10
+# The walks' trot sped up as on the watch (see tools/build_art.sh)
+WALKIN_KEEP="gte(n,57)+not(eq(mod(n,3),2))"
+WALKOUT_KEEP="lt(n,51)+not(eq(mod(n-51,3),2))"
 GIF=280
 UI=docs/media/face_ui.png
 FRAMES=build/frames/rig
@@ -27,7 +30,8 @@ ffmpeg -v error -y -f lavfi -i "color=white:s=${SCREEN}x$SCREEN" -vf \
 clip() {
     size=$(ffprobe -v error -select_streams v -show_entries stream=width -of csv=p=0 "$2/0001.png")
     case $2 in
-        */walkin|*/walkout) fit="scale=$SCREEN:$SCREEN:flags=lanczos" at="0:0" ;;
+        */walkin) fit="select='$WALKIN_KEEP',setpts=N/($FPS*TB),scale=$SCREEN:$SCREEN:flags=lanczos" at="0:0" ;;
+        */walkout) fit="select='$WALKOUT_KEEP',setpts=N/($FPS*TB),scale=$SCREEN:$SCREEN:flags=lanczos" at="0:0" ;;
         *) fit="crop=$CROP,scale=222:249:flags=lanczos" at="97:134" ;;
     esac
     # The face's text is white on black, so it goes over the dog with "lighten"

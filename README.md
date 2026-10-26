@@ -20,7 +20,9 @@ screen gets up and walks off, and the next dog, picked at random, walks in
 from the edge of the screen and sits down. Ozzie picks up her ball before she
 leaves and drops it when she arrives; it bounces and rolls to her paws. They
 turn the way a dog does: curving round as they walk, head first, feet
-stepping through the turn. The walks fill the whole round screen, passing
+stepping through the turn. The trot across the screen plays a third faster
+than it's rendered, so a walk-in (about 10 seconds) finishes before the
+watch ends the face's animations. The walks fill the whole round screen, passing
 under the steps and heart rate. Between swaps she sits in a mood:
 
 | | Awake | Happy | Asleep |
