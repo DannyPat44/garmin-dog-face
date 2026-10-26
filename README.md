@@ -8,7 +8,7 @@ rendered with Blender, so you can make your own.
 |---|---|---|---|
 | ![Millie](store/screenshot_millie.png) | ![Nova](store/screenshot_nova.png) | ![Ozzie](store/screenshot_ozzie.png) | ![Nova asleep](store/screenshot_nova_sleepy.png) |
 
-- **Millie**: a tri-colour hound pup with a red collar and gold tag.
+- **Millie**: a tri-colour hound pup in a little captain's hat.
 - **Nova**: a golden long-haired dachshund in a straw sombrero with a rainbow band.
 - **Ozzie**: a red cattle dog mix with one pricked ear and her tennis ball.
 
@@ -157,11 +157,12 @@ Nova's spec is "short legs, long body, gold coat, silky fur, sombrero head".
   right front) driven by distance travelled, so paws don't slide as the dog
   speeds up or slows down; the body bobs, the head nods, the tail swings.
 - **Animations** (`--anim`):
-  - `walkin`: trots in from off screen carrying the ball, slows and turns
-    toward the camera, drops the ball and sits. Its last frame is the sitting
+  - `walkin`: trots in from off screen carrying the ball, curves round toward
+    the camera as she slows (head first, feet stepping through the turn),
+    drops the ball and sits. Its last frame is the sitting
     loops' first.
-  - `walkout`: stands, steps to the ball and picks it up, turns and trots off
-    screen.
+  - `walkout`: stands, steps to the ball and picks it up, then curves away,
+    head first, and trots off screen.
   - The walks are framed to the whole watch screen (`frame_full_face`: a
     wider, shifted camera view, so the dog lands exactly where the loops' crop
     puts her); everything else is framed to the dog's box.

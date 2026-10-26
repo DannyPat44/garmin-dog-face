@@ -43,7 +43,8 @@ LOOP = 30
 #   fur        body fur (length, density, droop) and tail fur
 #   fur_style  how the coat looks: one of FUR_STYLES
 #   collar     (name, or "" for a gold tag, radius, tilt, colour[, band
-#              thickness[, letter height]]), round the base of the neck
+#              thickness[, letter height]]), round the base of the neck or
+#              at collar_at
 #   poses      adjustments to the shared poses, by pose name
 
 # A warm near-black for black coats: the fur's sheen keeps it visible on the
@@ -111,8 +112,8 @@ SPECS = {
         "poses": {"sit": {"chest": (10, 0, 0), "neck": (4, 0, 0)},
                   "lie": {"neck": (-28, 12, -34)}},
     },
-    # Millie: a sturdy tri-colour hound puppy, black saddle over tan, white
-    # bib and paws, and her collar
+    # Millie: a sturdy tri-colour hound puppy, black with a white bib and tan
+    # legs, in her captain's hat (dog.millie_head)
     "millie": {
         "torso": [
             ((0, -0.14, 0.40), (0.16, 0.17, 0.16)),
@@ -140,12 +141,12 @@ SPECS = {
         "hip": (0, 0.23, 0.41),
         "neck": ((0, -0.26, 0.55), (0, -0.32, 0.65)),
         "head": ("millie", (0, -0.31, 0.68), 1.3),
-        # A slim red collar with a gold tag
-        "collar": ("", 0.14, 0, dog.COLLAR_RED, 0.02),
         "fur": ((0.035, 7000, 0.5), (0.04, 9000, 0.2)),
         "fur_style": "fluffy",
         # Lying, her tail curls up behind her
         "poses": {"lie": {"tail0": (-20, 0, 40), "tail1": (-35, 0, 10), "tail2": (-15, 0, 0)}},
+        # The Zzz rise clear of her hat
+        "zzz": (0.12, -0.4, 0.86),
     },
 }
 
@@ -321,9 +322,9 @@ def build_dog(spec):
 
     collar = None
     if "collar" in spec:
-        # Round the base of the neck, moving with it
+        # Round the neck (its base, unless the spec says where), moving with it
         text, radius, tilt, color, *size = spec["collar"]
-        base = spec["neck"][0]
+        base = spec.get("collar_at", spec["neck"][0])
         collar = dog.empty("collar_pivot", base)
         dog.name_collar(text, base, radius, tilt, color, collar, *size)
 
@@ -693,18 +694,45 @@ def walk_path(speeds, headings, end):
     return [p + shift for p in pos]
 
 
+# Turning, a dog's feet keep stepping: her body sweeps this much ground per
+# degree of turn, on top of walking, so she steps round instead of spinning
+# on the spot. Her head turns into a turn this many frames ahead of her body.
+TURN_STEP = 0.004
+HEAD_LEAD = 6
+
+
+def gait(speeds, headings):
+    """Per frame, the walk cycle's phase and how much she's stepping (0-1),
+    from the ground her feet cover walking and turning."""
+    phase, out = 0.0, []
+    for i, speed in enumerate(speeds):
+        turn = abs(headings[i] - headings[i - 1]) if i else 0.0
+        step = speed + TURN_STEP * turn
+        phase += step / STRIDE
+        out.append((phase, min(1.0, step / WALK_SPEED * 1.4)))
+    return out
+
+
+def head_lead(headings, f):
+    """Her neck turned toward where her body will face in a few frames, so
+    her head leads the turn (positive turns left, like the heading)."""
+    ahead = headings[min(len(headings), f + HEAD_LEAD) - 1]
+    yaw = max(-35.0, min(35.0, 0.7 * (ahead - headings[f - 1])))
+    return {"neck": (0, 0, yaw)}
+
+
 class WalkIn:
-    """Walks in (carrying the ball, if she has one), slows and turns toward
-    the camera, drops the ball, which bounces and rolls, then sits and settles
-    on the sitting loops' first frame."""
+    """Walks in (carrying the ball, if she has one), curves round toward the
+    camera as she slows, head first, drops the ball, which bounces and rolls,
+    then sits and settles on the sitting loops' first frame."""
     # Starts far enough left to be off the watch's screen on frame 1
-    FRAMES = 110
-    SLOW_FROM, STOP_AT = 66, 78
-    TURN_FROM, TURN_TO = 64, 82
-    DIP_FROM, DROP_AT, DIP_TO = 79, 83, 88
-    SIT_FROM, SIT_TO = 87, 100
+    FRAMES = 116
+    SLOW_FROM, STOP_AT = 70, 86
+    TURN_FROM, TURN_TO = 60, 86
+    DIP_FROM, DROP_AT, DIP_TO = 85, 89, 94
+    SIT_FROM, SIT_TO = 93, 106
     # Trots in, easing to a walk well before she slows, like the walk-out
-    TROT_FROM, TROT_TO = 30, 44
+    TROT_FROM, TROT_TO = 36, 50
 
     def __init__(self, rig, loose_ball):
         self.rig, self.ball = rig, loose_ball
@@ -714,11 +742,12 @@ class WalkIn:
         self.headings = [WALK_HEADING + (SIT_HEADING - WALK_HEADING) * ease(self.TURN_FROM, self.TURN_TO, f)
                          for f in range(1, n + 1)]
         self.positions = walk_path(self.speeds, self.headings, SIT_SPOT)
+        self.gait = gait(self.speeds, self.headings)
 
     def pose(self, f):
-        phase = sum(self.speeds[:f]) / STRIDE
-        amount = min(1.0, self.speeds[f - 1] / WALK_SPEED * 1.4)
+        phase, amount = self.gait[f - 1]
         pose = add(dog_pose(self.rig, "stand"), walk_offsets(phase, amount))
+        pose = add(pose, head_lead(self.headings, f))
         # Dip to drop the ball (if she has one), then look up
         dip = ease(self.DIP_FROM, self.DROP_AT, f) - ease(self.DROP_AT, self.DIP_TO, f)
         dip *= 1 if self.ball is not None else 0
@@ -775,15 +804,16 @@ def ball_rest(rig, ball):
 
 
 class WalkOut:
-    """Stands up, steps to the ball and picks it up, turns and walks off."""
+    """Stands up, steps to the ball and picks it up, then sets off, curving
+    round head first, and trots off."""
     # Ends once she's trotted off the watch's screen
-    FRAMES = 100
+    FRAMES = 104
     STAND_FROM, STAND_TO = 5, 15
     STEP_FROM, STEP_TO = 14, 24
     DIP_FROM, PICK_AT, DIP_TO = 22, 26, 31
     GRAB_AT = 29             # the ball is in her mouth
-    TURN_FROM, TURN_TO = 29, 42
-    GO_FROM, GO_TO = 30, 42
+    TURN_FROM, TURN_TO = 29, 50
+    GO_FROM, GO_TO = 29, 40
     DIP = {"neck": (34, 0, 0), "chest": (6, 0, 0)}
 
     def __init__(self, rig, loose_ball, rest):
@@ -813,14 +843,14 @@ class WalkOut:
         for f in range(1, n + 1):
             travel += forward(headings[f - 1]) * speeds[f - 1]
             positions.append(SIT_SPOT + reach * ease(self.STEP_FROM, self.STEP_TO, f) + travel)
-        distance = 0.0
+        moved = [(positions[f - 1] - positions[f - 2]).length if f > 1 else 0.0 for f in range(1, n + 1)]
+        steps = gait(moved, headings)
         for f in range(1, n + 1):
-            moved = (positions[f - 1] - positions[f - 2]).length if f > 1 else 0.0
-            distance += moved
-            amount = min(1.0, moved / WALK_SPEED * 1.4) * ease(self.STAND_FROM + 4, self.STAND_TO, f)
+            phase, amount = steps[f - 1]
+            amount *= ease(self.STAND_FROM + 4, self.STAND_TO, f)
             stand = ease(self.STAND_FROM, self.STAND_TO, f)
             pose = blend(dog_pose(rig, "sit"),
-                         add(dog_pose(rig, "stand"), walk_offsets(distance / STRIDE, amount)), stand)
+                         add(add(dog_pose(rig, "stand"), walk_offsets(phase, amount)), head_lead(headings, f)), stand)
             dip = ease(self.DIP_FROM, self.PICK_AT, f) - ease(self.PICK_AT, self.DIP_TO, f)
             dip *= 1 if self.ball is not None else 0
             pose = add(pose, {k: tuple(a * dip for a in v) for k, v in self.DIP.items()})

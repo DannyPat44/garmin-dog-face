@@ -703,7 +703,8 @@ def leg(name, top, elements, base, patches, parent):
 
 
 def millie_head(rig, head_pivot):
-    """Millie's head: tan with a black cap, white blaze and muzzle, long hound ears."""
+    """Millie's head: tan with a black cap, white blaze and muzzle, long hound
+    ears, and her captain's hat."""
     head = [
         ((0, -0.07, 1.17), (0.23, 0.22, 0.21)),
         ((0, -0.19, 1.20), (0.16, 0.10, 0.10)),
@@ -731,6 +732,9 @@ def millie_head(rig, head_pivot):
     # Long, soft hound ears with dark edges
     rig["ears"] = [drop_ear(side, (side * 0.19, -0.05, 1.27), TAN, head_pivot, fur=(0.022, 12000, 0.6),
                             tip=(DARK_TAN, (0.12, 0.08, 0.09))) for side in (-1, 1)]
+
+    hat = captain_hat((0, -0.07, 1.345), (18, -10, 0), head_pivot)
+    hat.scale = (0.93,) * 3
 
 
 def nova_head(rig, head_pivot):
@@ -956,6 +960,55 @@ def sombrero(loc, rot, parent):
         solid.thickness = thickness
         solid.offset = 0
         obj.parent = pivot
+    set_parent(pivot, parent)
+    return pivot
+
+
+def captain_hat(loc, rot, parent):
+    """Millie's little captain's hat: a white crown wider than its navy band,
+    a glossy black peak, a gold cord across the front and a gold badge."""
+    pivot = empty("hat", loc)
+    pivot.rotation_euler = [math.radians(a) for a in rot]
+    white = glossy_material("hat_white", (0.82, 0.82, 0.80), 0.55, 0.0)
+    navy = glossy_material("hat_band", (0.02, 0.03, 0.09), 0.5, 0.0)
+    black = glossy_material("hat_peak", (0.01, 0.01, 0.012), 0.12, 1.0)
+    gold = glossy_material("hat_gold", (0.8, 0.52, 0.12), 0.25, 0.6)
+    crown = lathe("hat_crown", [(0.118, 0.045), (0.125, 0.07), (0.15, 0.10), (0.155, 0.115),
+                                (0.14, 0.128), (0.08, 0.134), (0.0, 0.135)])
+    band = lathe("hat_band", [(0.118, 0.0), (0.12, 0.024), (0.12, 0.047), (0.118, 0.05)])
+    for obj, mat in ((crown, white), (band, navy)):
+        obj.data.materials.append(mat)
+        solid = obj.modifiers.new("solid", "SOLIDIFY")
+        solid.thickness = 0.006
+        solid.offset = 0
+        obj.parent = pivot
+    # The peak: a flattened disc sticking out at the front, tipped down
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=1, segments=48, ring_count=16)
+    peak = bpy.context.active_object
+    peak.name = "hat_peak"
+    peak.scale = (0.12, 0.10, 0.009)
+    peak.location = (0, -0.12, 0.016)
+    peak.rotation_euler = (math.radians(-12), 0, 0)
+    bpy.ops.object.shade_smooth()
+    peak.data.materials.append(black)
+    peak.parent = pivot
+    # The gold cord across the front of the band, and the badge above it
+    bpy.ops.mesh.primitive_torus_add(major_radius=0.123, minor_radius=0.005, major_segments=96, minor_segments=8)
+    cord = bpy.context.active_object
+    cord.name = "hat_cord"
+    cord.location = (0, 0, 0.03)
+    bpy.ops.object.shade_smooth()
+    cord.data.materials.append(gold)
+    cord.parent = pivot
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=1, segments=32, ring_count=16)
+    badge = bpy.context.active_object
+    badge.name = "hat_badge"
+    badge.scale = (0.03, 0.008, 0.024)
+    badge.location = (0, -0.136, 0.082)
+    badge.rotation_euler = (math.radians(-20), 0, 0)
+    bpy.ops.object.shade_smooth()
+    badge.data.materials.append(gold)
+    badge.parent = pivot
     set_parent(pivot, parent)
     return pivot
 
