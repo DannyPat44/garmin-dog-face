@@ -733,7 +733,7 @@ def millie_head(rig, head_pivot):
     rig["ears"] = [drop_ear(side, (side * 0.19, -0.05, 1.27), TAN, head_pivot, fur=(0.022, 12000, 0.6),
                             tip=(DARK_TAN, (0.12, 0.08, 0.09))) for side in (-1, 1)]
 
-    hat = captain_hat((0, -0.07, 1.345), (18, -10, 0), head_pivot)
+    hat = captain_hat((0, -0.07, 1.34), (18, -10, 0), head_pivot)
     hat.scale = (0.93,) * 3
 
 

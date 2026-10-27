@@ -140,7 +140,9 @@ SPECS = {
         "shoulder": (0, -0.14, 0.42),
         "hip": (0, 0.23, 0.41),
         "neck": ((0, -0.26, 0.55), (0, -0.32, 0.65)),
-        "head": ("millie", (0, -0.31, 0.68), 1.3),
+        # Her head sits high enough that her neck shows, and low enough that
+        # her hat clears the top of the watch's dog box
+        "head": ("millie", (0, -0.31, 0.635), 1.3),
         "fur": ((0.035, 7000, 0.5), (0.04, 9000, 0.2)),
         "fur_style": "fluffy",
         # Lying, her tail curls up behind her
