@@ -4,7 +4,7 @@ SDK := $(shell cat "$(HOME)/Library/Application Support/Garmin/ConnectIQ/current
 JAVA_HOME ?= /opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home
 export JAVA_HOME
 DEVICE ?= fr265
-KEY ?= $(HOME)/workspace/garmin/keys/developer_key.der
+KEY ?= $(HOME)/workplace/garmin/keys/developer_key.der
 APP := Doggos
 
 .PHONY: build run test install package art frames preview rig rig-preview media
