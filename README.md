@@ -98,7 +98,7 @@ brew install ffmpeg libmtp openjdk@17
   openssl pkcs8 -topk8 -inform PEM -outform DER -in developer_key.pem -out developer_key.der -nocrypt
   ```
 
-  The Makefile looks for `~/workspace/garmin/keys/developer_key.der`; pass
+  The Makefile looks for `~/workplace/garmin/keys/developer_key.der`; pass
   `KEY=/path/to/developer_key.der` to use another location. Keep the key: store
   updates must be signed with the same one.
 
