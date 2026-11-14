@@ -7,7 +7,7 @@ DEVICE ?= fr265
 KEY ?= $(HOME)/workplace/garmin/keys/developer_key.der
 APP := Doggos
 
-.PHONY: build run test install package art frames preview rig rig-preview media
+.PHONY: build run test install package art frames preview rig rig-preview media icons
 
 build:
 	"$(SDK)bin/monkeyc" -f monkey.jungle -d $(DEVICE) -y "$(KEY)" -o bin/$(APP).prg -w
@@ -29,8 +29,13 @@ install: build
 	test -n "$$apps" || { echo "Watch not found: plug it in and close Garmin Express/OpenMTP"; exit 1; }; \
 	mtp-sendfile bin/$(APP).prg $$apps > /dev/null && echo "Installed $(APP).prg; unplug the watch"
 
+# The animations are big: the compiler needs a larger Java heap to package them
 package:
-	"$(SDK)bin/monkeyc" -f monkey.jungle -e -r -y "$(KEY)" -o bin/$(APP).iq
+	_JAVA_OPTIONS=-Xmx4g "$(SDK)bin/monkeyc" -f monkey.jungle -e -r -y "$(KEY)" -o bin/$(APP).iq
+
+# The store's on-device icons (Millie in her hat) from a render: needs Pillow
+icons:
+	python3 tools/make_icons.py
 
 # Rendering every dog and mood takes ~30 minutes; DOGS and MOODS narrow it,
 # e.g. make frames DOGS=nova MOODS=happy
