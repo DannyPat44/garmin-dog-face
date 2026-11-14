@@ -1,47 +1,114 @@
 # Connect IQ Store listing
 
-Upload `bin/Doggos.iq` (from `make package`) at https://apps-developer.garmin.com
-with the images in this folder (sizes from Garmin's brand guidelines):
+Everything the store listing uses, and how to publish a new version.
 
-- `cover.png`: 500x500 cover image / store icon (under 300 KB)
-- `icon_128.png`: 128x128 on-device icon, full colour (AMOLED watches)
-- `icon_128_64colors.png`: 128x128 on-device icon in Garmin's 64-colour palette (memory-in-pixel watches)
-- `hero.png`: 1440x720 hero image (under 2 MB)
-- `screenshot_*.png`: 416x416 screen images, one per dog and mood (under 150 KB each)
+- Listing: https://apps.garmin.com/apps/af36c22b-b7f3-4321-97c3-78ec36b56ff0 (Doggo Crew Face)
+- Developer dashboard: https://apps.garmin.com/developer/dashboard (sign in with the Garmin account)
+- Preview video: https://www.youtube.com/watch?v=q-ZICw2ZBQc (`docs/media/nova_hour.mp4`)
 
-`make media` regenerates the screenshots, hero and cover from the renders; the
-icons are made by hand.
+## Assets in this folder
 
-The 60x60 launcher icon is built into the app.
+Sizes from Garmin's brand guidelines.
 
-## App name
-Doggos
+| File | Store field | Made with |
+|---|---|---|
+| `cover.png` | Cover image, 500x500, under 300 KB | `make media` |
+| `hero.png` | Hero image, 1440x720, under 2 MB | `make media` |
+| `screenshot_*.png` | Screen images, 416x416, under 150 KB each; the store takes 5 | `make media` |
+| `icon_128.png` | On-device icon, full colour (AMOLED watches) | `make icons` |
+| `icon_128_64colors.png` | On-device icon in Garmin's 64-colour palette (memory-in-pixel watches) | `make icons` |
 
-## Category
-Watch Faces
+The five screenshots on the listing: `screenshot_millie`, `_nova`, `_ozzie`,
+`_millie_happy` and `_millie_sleepy`. The 60x60 launcher icon is built into
+the app.
 
-## Short description
-Three fluffy 3D pups take turns keeping you company.
+`make media` and `make icons` work from the renders in `build/frames/rig/`;
+render the dogs first (`make rig`) if those are missing or out of date.
 
-## Description
-Meet Millie, Nova and Ozzie: three fluffy, animated 3D dogs who take turns on your wrist.
+## Listing text
 
-- The dogs take turns, picked at random: Millie the tri-colour hound pup in her captain's hat, Nova the golden long-haired dachshund in her rainbow sombrero, and Ozzie the red cattle dog with her tennis ball.
-- Each swap is a little scene: the dog on screen gets up and trots off the edge of the screen, and the next one trots in, turns to face you and sits. Ozzie brings her ball.
-- Choose how often they swap (every time you look, every 5, 15 or 30 minutes, or every hour) and which dogs take turns, in the watch face's Customize menu.
-- Each dog's mood follows your day: awake and curious, happy once you've hit your step goal, and curled up asleep from 10pm to 6am, lying down with a yawn at bedtime.
-- A big, easy-to-read clock, with the date, battery percentage, steps and heart rate.
-- Battery-friendly: the dogs only animate while the screen is fully on. Always-on mode shows a dim clock that moves slightly to protect your AMOLED screen.
+**Title:** Doggo Crew Face (the app itself is named Doggos on the watch)
 
-Made for the Forerunner 265, 255 and 255 Music.
+**Tagline:** Three animated dogs take turns on your wrist, around a clear, readable face.
 
-Want your own dog on your watch? Every dog is modelled in code and rendered with Blender. The tools and source are at https://github.com/DannyPat44/garmin-dog-face
+**Description:**
 
-## What's new (version 1.0)
-First release: three dogs, three moods each, walking in and out on the hour or as often as you like.
+```
+A watch face that makes you smile every time you check it, and still reads at a glance.
 
-## Permissions
-None.
+Three dogs take turns on your wrist. When it's time to swap, the dog on screen trots off the edge and the next one trots in, turns to face you and sits down. The clock and stats are always drawn on top, so the dog never hides the time.
 
-## Credits
-Clock font: Fredoka, SIL Open Font License.
+Meet the crew:
+- Millie, a tri-colour hound pup in a little captain's hat
+- Nova, a golden long-haired dachshund in a straw sombrero with a rainbow band
+- Ozzie, a red cattle dog mix who brings her tennis ball
+
+Their moods follow your day: head tilts and tail wags most of the time, tongue-out happy once you reach your step goal, and at 10pm a yawn and a lie-down for the night.
+
+What you get:
+- A big, easy-to-read clock, with the date, battery percentage, steps and heart rate
+- Choose which dogs take turns, and how often: every time you raise your wrist, every 5, 15 or 30 minutes, or every hour
+- Easy on the battery: the dogs only move while the screen is fully on, and always-on mode on the Forerunner 265 shows a dim, shifting clock to protect the AMOLED screen
+
+For the Forerunner 265, 255 and 255 Music.
+
+Free. Every dog is modelled in code and rendered in Blender; if you're comfortable with code, the source and tools let you put your own dog on your watch: https://github.com/DannyPat44/garmin-dog-face
+```
+
+The description should sell the face before it lists features: why a dog
+lover would want it first, then a short summary of what it does. Keep the
+watch list in step with `manifest.xml`.
+
+**What's New (1.0):** Version 1.0: now on the Forerunner 255 and 255 Music.
+Choose which dogs take turns and how often they swap. Millie has a captain's
+hat, and the dogs trot in and out across the whole screen, turning naturally
+as they go.
+
+## Other answers on the form
+
+| Question | Answer |
+|---|---|
+| Category | Animal (no subcategory) |
+| Collects user data | No |
+| ANT+ profiles, regional limits, monetization | No |
+| Icons for the app store on the device | Yes (`icon_128*.png`) |
+| Contact email (shown publicly) | doggos.watchface@proton.me |
+| Source code URL | https://github.com/DannyPat44/garmin-dog-face |
+| Review notifications | Yes |
+| Let the store add newly compatible watches | Yes |
+
+**Permissions:** none. **Credits:** clock font Fredoka, SIL Open Font License.
+
+## Publishing a new version
+
+1. Merge the changes to `main`, then `make test` and check the face on each
+   watch in the simulator (`make run DEVICE=fr255`, and so on).
+2. Build the package: `make package` (writes `bin/Doggos.iq`, about 14 MB;
+   the Makefile gives the compiler the bigger Java heap it needs).
+3. On the dashboard, open Doggo Crew Face and choose **Upload New Version**.
+   Attach `bin/Doggos.iq` and give the version (the last was 1.0), then
+   **Upload and publish**. (Claude in Chrome can only attach files under
+   10 MB: split the package and join the parts in the page, or attach it by
+   hand.)
+4. On the next page (Update Details), write **What's New** for this version,
+   and update the description, screenshots or video if the change calls for
+   it (then update this file to match). **Submit**.
+5. Garmin reviews it; the listing shows "Version update pending" until then.
+
+A new preview video: `make media`, upload the clip to YouTube (not made for
+kids, public), and put the link in the listing's Preview Video.
+
+## Store quirks seen so far
+
+- **On-device icons can't be replaced**: once 128x128 icons are submitted, new
+  ones are refused ("There's an existing app icon..."), even after removing
+  the old ones. The listing still has the first icons (Millie in her red
+  collar); the new ones with her captain's hat are in this folder. Ask Garmin
+  developer support to replace them.
+- **Broken image previews** on the dashboard and the edit form: they load from
+  `api.appstore.garmin.com`, which often doesn't return them. The public
+  listing shows the images fine.
+- **"Trouble communicating with our servers"** on Submit: the change may have
+  saved anyway; reload the edit page and check before submitting again.
+- **Another browser extension can cover the edit form** after a file is
+  attached, blocking clicks; reloading the page clears it.

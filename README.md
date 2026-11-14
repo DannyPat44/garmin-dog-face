@@ -65,9 +65,13 @@ a face installed outside the Connect IQ Store.
 
 ## Install
 
-Doggos isn't in the Connect IQ Store yet, so it's installed by copying the
-build for your watch (`make build DEVICE=fr265`, `fr255` or `fr255m`, or a file
-someone shares with you) into `GARMIN/Apps` on the watch over USB:
+Get it from the [Connect IQ Store](https://apps.garmin.com/apps/af36c22b-b7f3-4321-97c3-78ec36b56ff0)
+(as Doggo Crew Face) in the Connect IQ app on your phone, or watch
+[Nova walk in](https://www.youtube.com/watch?v=q-ZICw2ZBQc) first.
+
+To try your own build instead, copy the build for your watch (`make build
+DEVICE=fr265`, `fr255` or `fr255m`, or a file someone shares with you) into
+`GARMIN/Apps` on the watch over USB:
 - **Windows**: the watch shows up in File Explorer; open Internal Storage,
   GARMIN, Apps and copy the `.prg` in.
 - **Mac**: Finder doesn't show Garmin watches, so use
@@ -108,7 +112,8 @@ brew install ffmpeg libmtp openjdk@17
 |---|---|
 | `make run` | Build and open in the simulator (`DEVICE=fr255` for the Forerunner 255; the default is `fr265`) |
 | `make install` | Build and copy onto a USB-connected watch (close Garmin Express first) |
-| `make package` | Build `bin/Doggos.iq` for the Connect IQ Store |
+| `make package` | Build `bin/Doggos.iq` for the Connect IQ Store (publishing it: `store/listing.md`) |
+| `make icons` | The store's 128 px on-device icons, from a render of Millie |
 | `make frames`, `make preview` | The original single-pose renders (`dog.py`) and their review GIFs |
 | `make test` | Unit tests (`test/`) in the simulator |
 | `make rig` | Render dogs on the shared skeleton into `build/frames/rig/` (`DOGS="ozzie nova millie"`, `ANIMS=walkin` narrows it; `SIZE=300` renders at the watch's size, ~15 s a frame with fur) |
@@ -237,4 +242,4 @@ without a jump. `make rig-preview` makes review GIFs of everything.
 - `tools/make_font.py`: turns `tools/fonts/Fredoka.ttf` (SIL OFL) into the clock's bitmap font
 - `tools/make_media.sh`, `tools/face_ui.py`: the README's GIFs and videos and the store art
 - `docs/media/`: the README's GIFs and videos
-- `store/`: Connect IQ Store listing, screenshots, hero and cover
+- `store/`: the Connect IQ Store listing (text, form answers, how to publish a new version), screenshots, hero, cover and icons
